@@ -2,7 +2,7 @@
 
 **RepoWorld is a read-only, sign-in-free tool for exploring public GitHub repositories as interactive 3D cities.** Districts are groups of source files; buildings represent modules; illuminated links represent sampled **static imports**, not runtime traffic. Issue Radar displays GitHub's reported open issues as referenced, suggested, or unplaced locations. An optional BharatCode assistant helps developers investigate code and plan safe next steps.
 
-**Status:** v0.9.6 is a local launch-hardening update based on the previously working v0.9.5 app. Its code, tests, and simulated hosting smoke checks pass, but it has **not been deployed, published or submitted**. The paid Render setup is prepared, not purchased or provisioned. See [RELEASE_NOTES.md](RELEASE_NOTES.md) and [ROADMAP.md](ROADMAP.md).
+**Status:** v0.9.6 is a local launch-hardening update based on the previously working v0.9.5 app. Its code, tests, and simulated hosting smoke checks pass, and the source is **published on GitHub**. The application has **not yet been deployed or submitted**. The paid Render setup is prepared, not purchased or provisioned. See [RELEASE_NOTES.md](RELEASE_NOTES.md) and [ROADMAP.md](ROADMAP.md).
 
 ## Try RepoWorld (no account)
 

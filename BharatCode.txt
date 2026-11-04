@@ -30,6 +30,6 @@ linked source and relevant project tests. Anonymous access is protected with
 per-browser and global budgets, but a public launch also requires hosting-level
 abuse protection.
 
-Repository source URL: NOT YET PUBLISHED.
+Repository source URL: https://github.com/S-h-u-b-h-1/RepoWorld
 Live application URL: NOT YET DEPLOYED.
 Hackathon page: https://auth.bharatcode.ai/hackathon
