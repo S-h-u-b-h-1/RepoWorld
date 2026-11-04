@@ -1,0 +1,384 @@
+/* RepoWorld v0.3 app-controller tests, no network or browser required. */
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+const source=fs.readFileSync(path.join(__dirname,'../static/app.js'),'utf8');
+const GRAPH={name:'Demo City',owner:'testowner',branch:'main',source:'github',url:'https://github.com/testowner/demo-city',
+  nodes:[{id:'web',name:'Web',kind:'frontend',path:'apps/web',fileCount:6,files:['apps/web/index.ts'],description:'Website'},
+    {id:'api',name:'API',kind:'api',path:'services/api',fileCount:5,files:['services/api/index.py'],description:'API service'}],
+  edges:[{source:'web',target:'api',type:'import'}],
+  stats:{modules:2,files:11,dependencies:1,inspectedSources:2},warnings:[]};
+class FakeElement{
+  constructor(tag='div'){
+    this.tagName=tag.toUpperCase();this.textContent='';this.value='';this.style={};this.hidden=false;this.disabled=false;
+    this.children=[];this.dataset={};this.listeners={};this.attrs=new Map();this.classNames=new Set();this.src='';
+    this.classList={add:n=>this.classNames.add(n),remove:n=>this.classNames.delete(n),
+      toggle:(n,force)=>{const on=force===undefined?!this.classNames.has(n):force;if(on)this.classNames.add(n);else this.classNames.delete(n);return on;},
+      contains:n=>this.classNames.has(n)};
+  }
+  addEventListener(type,callback){this.listeners[type]=callback;}
+  setAttribute(n,v){this.attrs.set(n,v);}
+  getAttribute(n){return this.attrs.get(n);}
+  append(...children){this.children.push(...children);}
+  replaceChildren(...children){this.children=[...children];}
+  showModal(){this.hidden=false;this.open=true;}
+  close(){this.hidden=true;this.open=false;}
+  focus(){}
+  closest(){return null;}
+}
+function makeApp({authenticated=true,active=true,assistantResult=null,multipleIssues=false,importFailure=null,deepLink=''}={}){
+  const elements=new Map();
+  const el=id=>{if(!elements.has(id))elements.set(id,new FakeElement(['importInput','aiQuestion','searchInput','assistantQuestion'].includes(id)?'input':'div'));return elements.get(id);};
+  const layers=['structure','dependencies','flows','hotspots'].map(n=>Object.assign(new FakeElement('button'),{dataset:{layer:n}}));
+  const compassTabs=['ask','issues','find'].map(n=>Object.assign(new FakeElement('button'),{dataset:{compassTab:n}}));
+  const document={
+    addEventListener(ev,fn){if(ev==='DOMContentLoaded')this.onload=fn;},
+    getElementById:el,
+    querySelectorAll(q){return q==='[data-layer]'?layers:q==='[data-compass-tab]'?compassTabs:[];},
+    querySelector(q){const m=q.match(/\[data-compass-tab="(.*?)"\]/);return m?compassTabs.find(b=>b.dataset.compassTab===m[1]):null;},
+    createElement(tag){return new FakeElement(tag);},
+    activeElement:new FakeElement('div'),
+  };
+  const user={name:'Test User',username:'tester',provider:'github',email:'',avatar:''};
+  const session=()=>({authenticated:true,guest:true,user:null,csrf:'csrf-test',
+    repositories:active?[{id:'demo',owner:'testowner',name:'Demo City',fullName:'testowner/demo-city'}]:[],activeRepo:active?'demo':null,
+    aiConfigured:false});
+  const calls=[];
+  async function fetchStub(url,opts={}){
+    calls.push({url,opts});let body=null,code=200;
+    if(url==='/api/session')body=session();
+    else if(url==='/api/my-repos/demo')body={id:'demo',graph:GRAPH};
+    else if(url==='/api/my-repos/demo/issues'){
+      const baseIssue={number:4,title:'Fix login in services/api/index.py',url:'https://github.com/testowner/demo-city/issues/4',labels:['bug'],body:'services/api/index.py\nLogin fails on expired sessions.',matches:[{nodeId:'api',confidence:'referenced',evidence:'Issue references services/api/index.py'}]};
+      const unplaced={number:5,title:'Documentation',url:'https://github.com/testowner/demo-city/issues/5',labels:[],matches:[]};
+      const extras=multipleIssues?[{number:717,title:'Add logging for api requests',url:'https://github.com/testowner/demo-city/issues/717',labels:['feature'],body:'services/api/index.py requires logging',matches:[{nodeId:'api',confidence:'referenced',evidence:'Issue references services/api/index.py'}]},{number:789,title:'Handle short commit messages',url:'https://github.com/testowner/demo-city/issues/789',labels:['bug'],body:'services/api/index.py prefix exception',matches:[{nodeId:'api',confidence:'referenced',evidence:'Issue references services/api/index.py'}]},{number:821,title:'Improve module error handling',url:'https://github.com/testowner/demo-city/issues/821',labels:['enhancement'],body:'services/api/index.py',matches:[{nodeId:'api',confidence:'referenced',evidence:'Issue references services/api/index.py'}]}]:[];
+      body={total:2+extras.length,placed:1+extras.length,unplaced:1,partial:false,scope:'Mock public issues',issues:[baseIssue,...extras,unplaced],byNode:{api:{referenced:[4,...extras.map(e=>e.number)],suggested:[]}}};
+    }
+    else if(url==='/api/my-repos/demo/assistant'&&opts.method==='POST')body=assistantResult||{mode:'navigation',answer:'Start with API.',steps:['Read source'],nodeIds:['api'],sources:[{file:'services/api/index.py',url:'https://github.com/testowner/demo-city/blob/main/services/api/index.py'}],disclosure:'Navigation only'};
+    else if(url==='/api/my-repos/demo/find?q=Where%20is%20login%20handled%3F')body={query:'Where is login handled?',results:[{nodeId:'api',name:'API',path:'services/api',kind:'api',files:['services/api/index.py']}],scope:'Path-based matches.'};
+    else if(url==='/api/my-repos/demo/impact?nodeId=api')body={root:'api',direct:[{nodeId:'web',name:'Web',path:'apps/web',hops:1,importPath:['web','api']}],indirect:[],affectedCount:1,edges:[{source:'web',target:'api'}]};
+    else if(url==='/api/tour')body={mode:'guided',steps:[
+      {nodeId:'web',title:'Web district',description:'UI files'},
+      {nodeId:'api',title:'API district',description:'Server files'}]};
+    else if(url==='/api/my-repos'&&opts.method==='POST'){
+      if(importFailure){code=importFailure.status;body={error:importFailure.message};}
+      else {active=true;body={id:'demo',graph:GRAPH};}
+    }
+    else body={error:'Unavailable'},code=404;
+    return {ok:code===200,status:code,headers:{get:key=>key==='Retry-After'?importFailure?.retryAfter||null:null},json:async()=>body};
+  }
+  let renderer;
+  class Renderer{
+    constructor(canvas,opts){renderer=this;this.onSelect=opts.onSelect;this.onIssueSelect=opts.onIssueSelect;this.selected=null;}
+    setGraph(graph){this.graph=graph;}
+    setIssueMarkers(data){this.issueMarkers=data;}
+    setSelected(id){this.selected=id;}
+    setMode(mode){this.mode=mode;}
+    setTraffic(v){this.traffic=v;}
+    setImpactTrace(trace){this.trace=trace;}
+    resetCamera(){this.reset=true;}
+  }
+  const copied=[];
+  const location={origin:'http://127.0.0.1:8004',pathname:'/',search:deepLink,assign(){}};
+  const window={RepoWorldRenderer:Renderer,REPOWORLD_COLORS:{frontend:'#88ccff'},REPOWORLD_DISTRICTS:{frontend:{name:'Frontend Boulevard'},api:{name:'API Heights'}},
+    setTimeout(){return 1;},clearTimeout(){},location,navigator:{clipboard:{async writeText(value){copied.push(value);}}}};
+  const sandbox={document,window,fetch:fetchStub,console,location,URLSearchParams,
+    clearTimeout(){},setTimeout(fn){fn();return 1;},encodeURIComponent,Response};
+  vm.runInNewContext(source,sandbox);
+  const flush=()=>new Promise(resolve=>setImmediate(resolve));
+  async function boot(){document.onload();for(let i=0;i<4;i++)await flush();}
+  return {document,window,el,layers,compassTabs,calls,copied,boot,get renderer(){return renderer;}};
+}
+test('new visitors land directly on Add GitHub repository, without signing in',async()=>{
+  const ui=makeApp({authenticated:false,active:false});await ui.boot();
+  assert.equal(ui.el('workspace').hidden,false);
+  assert.equal(ui.el('emptyState').hidden,false);
+  assert.equal(ui.renderer,undefined);
+});
+test('guest users without repositories get a single add-repo empty state',async()=>{
+  const ui=makeApp({active:false});await ui.boot();
+  assert.equal(ui.el('workspace').hidden,false);
+  assert.equal(ui.el('emptyState').hidden,false);
+  assert.equal(ui.el('canvasStage').hidden,true);
+  assert.equal(ui.el('activeRepoTitle').textContent,'RepoWorld');
+  ui.el('emptyAddRepo').listeners.click();
+  assert.equal(ui.el('addRepoDialog').open,true);
+});
+test('saved repo boots into full-screen city with correct name and optional tools',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  assert.equal(ui.el('emptyState').hidden,true);
+  assert.equal(ui.el('canvasStage').hidden,false);
+  assert.equal(ui.el('activeRepoTitle').textContent,'Demo City');
+  assert.equal(ui.renderer.graph.nodes.length,2);
+  ui.el('mapCommandTrigger').listeners.click();
+  assert.equal(ui.el('searchDialog').open,true);
+  ui.compassTabs[2].listeners.click();
+  ui.el('showMapOptions').listeners.click();
+  assert.equal(ui.el('mapTools').hidden,false);
+  ui.layers[1].listeners.click();
+  assert.equal(ui.renderer.mode,'dependencies');
+  ui.el('tourButton').listeners.click();
+  assert.equal(ui.el('tourPanel').hidden,false);
+  assert.equal(ui.el('tourTitle').textContent,'Web district');
+  ui.el('tourNext').listeners.click();
+  assert.equal(ui.el('tourTitle').textContent,'API district');
+});
+test('selecting a tower opens honest source inspector',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  ui.renderer.onSelect('web');
+  assert.equal(ui.el('inspector').hidden,false);
+  assert.equal(ui.el('inspectorName').textContent,'Web');
+  assert.equal(ui.el('inspectorOut').textContent,'1');
+  assert.equal(ui.el('inspectorConnections').children.length,1);
+});
+test('import from an empty guest workspace persists as active city',async()=>{
+  const ui=makeApp({active:false});await ui.boot();
+  ui.el('emptyAddRepo').listeners.click();
+  ui.el('importInput').value='testowner/demo-city';
+  await ui.el('importForm').listeners.submit({preventDefault(){}});
+  for(let i=0;i<5;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ui.el('activeRepoTitle').textContent,'Demo City');
+  assert.equal(ui.el('canvasStage').hidden,false);
+  assert.ok(ui.calls.some(c=>c.url==='/api/my-repos'&&c.opts.method==='POST'));
+  assert.ok(ui.calls.some(c=>c.opts.headers?.['X-RepoWorld-CSRF']==='csrf-test'));
+});
+
+test('a GitHub rate limit is shown in the import modal with a retry time',async()=>{
+  const ui=makeApp({active:false,importFailure:{status:429,message:'GitHub API rate limit reached.',retryAfter:'91'}});
+  await ui.boot();
+  ui.el('emptyAddRepo').listeners.click();
+  ui.el('importInput').value='public/demo';
+  await ui.el('importForm').listeners.submit({preventDefault(){}});
+  for(let i=0;i<6;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ui.el('importError').hidden,false);
+  assert.match(ui.el('importError').textContent,/GitHub API rate limit reached/);
+  assert.match(ui.el('importError').textContent,/2 minutes/);
+  assert.equal(ui.el('importButton').disabled,false);
+});
+test('one subtle city command opens grounded code compass with selectable result',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  ui.el('mapCommandTrigger').listeners.click();
+  assert.equal(ui.el('searchDialog').open,true);
+  ui.compassTabs[2].listeners.click();
+  ui.el('searchInput').value='Where is login handled?';
+  ui.el('searchInput').listeners.input();
+  for(let i=0;i<3;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ui.el('searchResults').children.length,1);
+  assert.equal(ui.el('searchResults').children[0].children[1].textContent,'services/api');
+  ui.el('searchResults').children[0].listeners.click();
+  assert.equal(ui.el('inspector').hidden,false);
+  assert.equal(ui.renderer.selected,'api');
+  assert.ok(ui.calls.some(c=>c.url.includes('/find?q=')));
+});
+test('trace highlights only sampled reverse imports and can be dismissed',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  ui.renderer.onSelect('api');
+  await ui.el('inspectorTrace').listeners.click();
+  assert.equal(ui.el('impactPanel').hidden,false);
+  assert.equal(ui.el('impactCount').textContent,'1 POSSIBLY AFFECTED');
+  assert.equal(ui.renderer.mode,'dependencies');
+  assert.equal(ui.renderer.trace.root,'api');
+  ui.el('exitImpact').listeners.click();
+  assert.equal(ui.el('impactPanel').hidden,true);
+  assert.equal(ui.renderer.trace,null);
+});
+
+test('open issue radar is visible inside existing command, not as new homepage button',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  ui.el('mapCommandTrigger').listeners.click();
+  ui.compassTabs[1].listeners.click();
+  assert.equal(ui.el('issuesTab').hidden,false);
+  assert.equal(ui.el('issueList').children.length,2);
+  assert.equal(ui.el('issueSummary').textContent,'2 open issues sampled · 1 placed · 1 unplaced');
+  assert.ok(ui.calls.some(c=>c.url==='/api/my-repos/demo/issues'));
+});
+test('assistant supports a building context and sends CSRF authenticated questions',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  ui.renderer.onSelect('api');
+  assert.equal(ui.el('buildingIssues').hidden,false);
+  ui.el('inspectorAsk').listeners.click();
+  assert.equal(ui.el('askTab').hidden,false);
+  assert.ok(ui.el('assistantContext').textContent.includes('API'));
+  ui.el('assistantQuestion').value='How does the API relate to the frontend?';
+  await ui.el('assistantSend').listeners.click();
+  assert.ok(ui.calls.some(c=>c.url==='/api/my-repos/demo/assistant'&&
+    JSON.parse(c.opts.body).nodeId==='api'&&c.opts.headers['X-RepoWorld-CSRF']==='csrf-test'));
+  assert.equal(ui.el('assistantThread').children.length,2); // welcome is hidden after the first message
+});
+
+test('assistant labels provider timeout honestly without another homepage control',async()=>{
+  const ui=makeApp({active:true,assistantResult:{mode:'navigation',providerStatus:'timeout',answer:'BharatCode timed out. Start with api.',
+    steps:['Inspect the linked files'],nodeIds:['api'],sources:[],disclosure:'AI was unavailable (provider timeout). This is not an AI answer.'}});
+  await ui.boot();
+  ui.el('mapCommandTrigger').listeners.click();
+  ui.el('assistantQuestion').value='Where should I start fixing sessions?';
+  await ui.el('assistantSend').listeners.click();
+  const assistantMessage=ui.el('assistantThread').children[1];
+  assert.equal(assistantMessage.children[0].textContent,'BHARATCODE UNAVAILABLE · LOCAL PATH GUIDE');
+  assert.equal(assistantMessage.children[1].textContent,'BharatCode timed out. Start with api.');
+  assert.equal(ui.el('workspace').hidden,false);
+  assert.equal(ui.el('canvasStage').hidden,false);
+});
+
+
+test('clicking a city issue pin opens report and automatically asks source-scoped assistant',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  assert.equal(ui.el('issueMapLegend').hidden,false);
+  assert.ok(ui.renderer.issueMarkers.api.referenced.includes(4));
+  ui.renderer.onIssueSelect('api');
+  for(let i=0;i<4;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ui.el('issueDrawer').hidden,false);
+  assert.ok(ui.el('issueDrawerHeading').textContent.includes('Fix login'));
+  assert.equal(ui.el('issueDetailIndex').textContent,'OPEN ISSUE #4');
+  assert.ok(ui.el('issuePlacement').children[0].textContent.includes('Path referenced'));
+  assert.ok(ui.el('issueDetailBody').textContent.includes('Login fails'));
+  const request=ui.calls.find(c=>c.url==='/api/my-repos/demo/assistant'&&c.opts.method==='POST');
+  assert.ok(request);
+  const payload=JSON.parse(request.opts.body);
+  assert.equal(payload.issueNumber,4);
+  assert.equal(payload.nodeId,'api');
+  assert.ok(payload.question.includes('investigation steps'));
+  assert.ok(ui.el('issueAiResult').children.length>0);
+  assert.equal(ui.el('issueFollowUp').hidden,false);
+  // Reopening an issue already explained in this session does not spend tokens again.
+  ui.el('closeIssueDrawer').listeners.click();ui.renderer.onIssueSelect('api');
+  assert.equal(ui.calls.filter(c=>c.url==='/api/my-repos/demo/assistant').length,1);
+});
+
+test('issue detail can be opened for an unplaced issue without inventing a building',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  ui.el('mapCommandTrigger').listeners.click();ui.compassTabs[1].listeners.click();
+  const issueRow=ui.el('issueList').children[1];
+  issueRow.children[0].children[0].listeners.click();
+  for(let i=0;i<4;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ui.el('issueDrawer').hidden,false);
+  assert.equal(ui.el('issueDrawerDistrict').textContent,'UNPLACED GITHUB ISSUE');
+  assert.ok(ui.el('issuePlacement').children[0].textContent.includes('No verified'));
+  assert.equal(ui.el('issueGithubLink').href,'https://github.com/testowner/demo-city/issues/5');
+  const req=ui.calls.find(c=>c.url==='/api/my-repos/demo/assistant');
+  assert.equal(JSON.parse(req.opts.body).nodeId,null);
+  assert.equal(JSON.parse(req.opts.body).issueNumber,5);
+});
+
+test('issue guide routes a follow-up into the existing assistant instead of creating new navigation',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  ui.renderer.onIssueSelect('api');
+  for(let i=0;i<4;i++)await new Promise(resolve=>setImmediate(resolve));
+  ui.el('issueFollowUp').listeners.click();
+  assert.equal(ui.el('issueDrawer').hidden,true);
+  assert.equal(ui.el('searchDialog').open,true);
+  assert.equal(ui.el('askTab').hidden,false);
+  assert.ok(ui.el('assistantContext').textContent.includes('Issue #4'));
+  assert.ok(ui.el('assistantQuestion').value.includes('issue #4'));
+});
+
+
+test('building inspector exposes issues above metrics, with direct buttons and a browse-all action',async()=>{
+  const ui=makeApp({active:true,multipleIssues:true});await ui.boot();
+  ui.renderer.onSelect('api');
+  assert.equal(ui.el('buildingIssues').hidden,false);
+  assert.equal(ui.el('buildingIssueCount').textContent,'4 LINKED');
+  const rows=ui.el('buildingIssuesList').children;
+  assert.equal(rows.length,3);
+  assert.equal(ui.el('buildingIssuesMore').hidden,false);
+  assert.ok(ui.el('buildingIssuesMore').textContent.includes('all 4'));
+  assert.ok(rows[1].children[0].textContent.includes('#717'));
+  rows[1].listeners.click();
+  for(let i=0;i<3;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ui.el('issueDetailIndex').textContent,'OPEN ISSUE #717');
+  assert.equal(ui.el('issueDrawerSelect').value,'717');
+  assert.equal(ui.el('issueDrawerChooser').hidden,false);
+  assert.equal(ui.el('issueDrawerSelect').children.length,4);
+  assert.ok(ui.calls.some(c=>c.url==='/api/my-repos/demo/assistant'&&JSON.parse(c.opts.body).issueNumber===717));
+});
+
+test('issue selector switches issue-number and assistant context, never silently choosing first',async()=>{
+  const ui=makeApp({active:true,multipleIssues:true});await ui.boot();
+  ui.renderer.onIssueSelect('api');
+  for(let i=0;i<3;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ui.el('issueDetailIndex').textContent,'OPEN ISSUE #4');
+  const select=ui.el('issueDrawerSelect');
+  select.value='789';select.listeners.change();
+  for(let i=0;i<3;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ui.el('issueDetailIndex').textContent,'OPEN ISSUE #789');
+  assert.ok(ui.el('issueDrawerHeading').textContent.includes('Handle short commit'));
+  assert.ok(ui.calls.some(c=>c.url==='/api/my-repos/demo/assistant'&&JSON.parse(c.opts.body).issueNumber===789));
+  assert.equal(ui.el('issueMapCount').textContent,'5 OPEN ISSUES · 4 ON MAP');
+  ui.el('issueMapLegend').listeners.click();
+  assert.equal(ui.el('searchDialog').open,true);
+  assert.equal(ui.el('issuesTab').hidden,false);
+});
+
+test('source-observed issue file becomes a real map marker and a contextual jump, not a permanent button',async()=>{
+  const sourceAnswer={mode:'ai',answer:'The source contains the referenced identifier.',issueSummary:'The issue reports a login error.',
+    codeEvidence:['apps/web/index.ts mentions handleLogin in a public source excerpt.'],
+    steps:['Inspect the code'],tests:['Run relevant login tests'],sourceFilesRead:1,
+    sources:[{file:'apps/web/index.ts',url:'https://github.com/testowner/demo-city/blob/'+'a'.repeat(40)+'/apps/web/index.ts#L12-L29',lineStart:12,lineEnd:29,evidence:'excerpt'}],
+    observedLocations:[{nodeId:'web',file:'apps/web/index.ts',symbols:['handleLogin'],evidence:'identifier-observed',
+      url:'https://github.com/testowner/demo-city/blob/'+'a'.repeat(40)+'/apps/web/index.ts#L12-L29'}],
+    disclosure:'Source observed; issue not verified.'};
+  const ui=makeApp({active:true,assistantResult:sourceAnswer});await ui.boot();
+  ui.el('mapCommandTrigger').listeners.click();ui.compassTabs[1].listeners.click();
+  ui.el('issueList').children[1].children[0].children[0].listeners.click();
+  for(let i=0;i<5;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ui.el('issueDetailIndex').textContent,'OPEN ISSUE #5');
+  assert.ok(ui.renderer.issueMarkers.web.observed.includes(5));
+  assert.equal(ui.renderer.issueMarkers.api.referenced.includes(4),true);
+  assert.equal(ui.el('issueMapCount').textContent,'2 OPEN ISSUES · 2 ON MAP');
+  assert.match(ui.el('issueDrawerDistrict').textContent,/SOURCE OBSERVED/);
+  assert.match(ui.el('issuePlacement').children[0].textContent,/Identifier observed/);
+  const section=ui.el('issueAiResult').children.find(c=>c.children?.some(x=>x.textContent==='CODE LOCATED IN THE CITY'));
+  assert.ok(section,'source-observed location appears inside existing issue panel');
+  const jump=section.children.find(c=>c.className==='observed-source-location');
+  assert.ok(jump);assert.match(jump.children[0].textContent,/apps\/web\/index.ts/);
+  jump.listeners.click();
+  assert.equal(ui.renderer.selected,'web');
+  assert.equal(ui.el('inspector').hidden,false);
+  assert.equal(ui.el('issueDrawer').hidden,true);
+});
+
+test('unverified path guesses cannot add source-observed markers',async()=>{
+  const ui=makeApp({active:true,assistantResult:{mode:'ai',answer:'Maybe web.',sourceFilesRead:1,
+    observedLocations:[],sources:[{file:'apps/web/index.ts',evidence:'path-only',url:'https://github.com/testowner/demo-city/blob/main/apps/web/index.ts'}]}});
+  await ui.boot();ui.el('mapCommandTrigger').listeners.click();ui.compassTabs[1].listeners.click();
+  ui.el('issueList').children[1].children[0].children[0].listeners.click();
+  for(let i=0;i<5;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ui.renderer.issueMarkers.web,undefined);
+  assert.equal(ui.el('issueMapCount').textContent,'2 OPEN ISSUES · 1 ON MAP');
+});
+
+
+test('sharing a saved public city copies only owner/repo, never workspace credentials',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  assert.equal(ui.el('copyCityLink').hidden,false);
+  await ui.el('copyCityLink').listeners.click();
+  assert.equal(ui.copied.length,1);
+  assert.equal(ui.copied[0],'http://127.0.0.1:8004/?repo=testowner%2Fdemo-city');
+  assert.ok(!ui.copied[0].includes('csrf-test'));
+  assert.ok(!ui.copied[0].includes('id=demo'));
+});
+
+test('shared repository links prefill import but never spend GitHub quota on page load',async()=>{
+  const ui=makeApp({active:false,deepLink:'?repo=testowner%2Fdemo-city'});await ui.boot();
+  assert.equal(ui.el('addRepoDialog').open,true);
+  assert.equal(ui.el('importInput').value,'testowner/demo-city');
+  assert.equal(ui.el('emptyState').hidden,false);
+  assert.equal(ui.calls.filter(call=>call.url==='/api/my-repos'&&call.opts.method==='POST').length,0);
+  assert.equal(ui.el('importButton').disabled,false);
+});
+
+test('share link selects an existing browser city without reimporting',async()=>{
+  const ui=makeApp({active:true,deepLink:'?repo=TESTOWNER%2Fdemo-city'});await ui.boot();
+  assert.equal(ui.el('activeRepoTitle').textContent,'Demo City');
+  assert.equal(ui.el('addRepoDialog').open,undefined);
+  assert.equal(ui.calls.filter(call=>call.url==='/api/my-repos'&&call.opts.method==='POST').length,0);
+});
+
+test('invalid or external deep links never start a repository fetch or import modal',async()=>{
+  const ui=makeApp({active:false,deepLink:'?repo=https%3A%2F%2Fevil.example%2Fsecret'});await ui.boot();
+  assert.equal(ui.el('emptyState').hidden,false);
+  assert.equal(ui.el('addRepoDialog').open,undefined);
+  assert.equal(ui.calls.filter(call=>call.url==='/api/my-repos').length,0);
+});

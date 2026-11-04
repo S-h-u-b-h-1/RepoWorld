@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#061021">
+  <meta name="description" content="RepoWorld turns public GitHub repositories into beautifully explorable cities of code.">
+  <title>RepoWorld — A city for every codebase</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="visual-fixture.css">
+  <script defer src="../app/static/world.js"></script>
+  <script defer src="../app/static/app.js"></script>
+</head>
+<body>
+  <div id="loadingView" class="startup-screen"><span class="logo-symbol" aria-hidden="true"><i></i><i></i><i></i></span><span class="loading-word">RepoWorld</span></div>
+
+  <main id="workspace" class="workspace" hidden>
+    <div class="world-ambient" aria-hidden="true"></div>
+    <div id="worldBackdrop" class="world-backdrop" aria-hidden="true"></div>
+    <div class="canvas-stage" id="canvasStage" hidden>
+      <canvas id="worldCanvas" tabindex="0" role="application" aria-label="Interactive repository city. Drag to orbit, scroll to zoom, click a building to inspect its module, or select an issue pin to investigate an open GitHub issue."></canvas>
+      <div class="city-glass-overlay" aria-hidden="true"></div>
+      <div id="sceneTooltip" class="scene-tooltip" role="tooltip" hidden></div>
+    </div>
+
+    <header class="city-header">
+      <div class="city-header-left">
+        <span class="logo-symbol city-logo" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="city-header-divider"></span>
+        <div class="repo-menu-wrap" id="repoMenuWrap">
+          <button type="button" class="repo-title-button" id="repoMenuButton" aria-haspopup="true" aria-expanded="false" aria-controls="repoMenu">
+            <span class="repo-caption">REPOWORLD <span class="slash">/</span> YOUR CITY</span>
+            <span class="repo-title-line"><strong id="activeRepoTitle">RepoWorld</strong><svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m5 8 5 5 5-5" stroke="currentColor" stroke-width="1.7"/></svg></span>
+          </button>
+          <div class="popover repo-menu" id="repoMenu" hidden>
+            <div class="popover-heading">YOUR REPOSITORIES</div>
+            <div id="repoMenuItems" class="repo-menu-items"></div>
+            <button type="button" class="popover-command" id="refreshCurrentRepo" hidden><span>↻</span> Refresh code index</button>
+            <button type="button" class="popover-command" id="addAnotherRepo"><span>＋</span> Add GitHub repository</button>
+          </div>
+        </div>
+      </div>
+      <div class="guest-kicker" aria-label="No account required">PUBLIC REPOSITORIES <span aria-hidden="true">·</span> NO SIGN-IN</div>
+    </header>
+
+    <section class="empty-state" id="emptyState" hidden aria-labelledby="emptyTitle">
+      <div class="empty-symbol" aria-hidden="true"><span></span><span></span><span></span></div>
+      <div class="eyebrow empty-eyebrow"><span class="eyebrow-line"></span> YOUR CANVAS AWAITS</div>
+      <h1 id="emptyTitle">Every repository<br>deserves a <em>world.</em></h1>
+      <p>Paste any public GitHub repository. Explore its architecture, find code, and investigate open issues—no sign-in needed.</p>
+      <button class="primary-cta" type="button" id="emptyAddRepo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Add GitHub repository <span aria-hidden="true">↗</span></button>
+      <div class="empty-assurance">NO ACCOUNT REQUIRED <span>·</span> PUBLIC REPOSITORIES ONLY <span>·</span> READ-ONLY IMPORT</div>
+    </section>
+
+    <div class="world-status" id="worldStatus" hidden><span class="status-light"></span><span id="cityStatusText">CITY READY</span><span class="status-divider"></span><span id="cityStatusCounts"></span></div>
+    <div class="city-hint" id="cityHint" hidden>DRAG TO EXPLORE <span>·</span> CLICK A BUILDING TO UNDERSTAND IT</div>
+    <button type="button" class="issue-map-legend" id="issueMapLegend" hidden aria-label="Browse open GitHub issues for this repository" title="Browse issues and locate their suggested buildings"><i class="issue-legend-gold" aria-hidden="true"></i><span id="issueMapCount">OPEN ISSUES</span><span class="issue-legend-divider">·</span><i class="issue-legend-outline" aria-hidden="true">?</i><span>SUGGESTED LOCATIONS</span><span class="issue-legend-arrow" aria-hidden="true">↗</span></button>
+    <button type="button" class="map-command-trigger" id="mapCommandTrigger" aria-label="Find code in this repository" aria-keyshortcuts="Control+k Meta+k /" hidden><span class="grid-icon" aria-hidden="true">⌕</span><span>Explore code</span><span class="keycap">⌘ K</span></button>
+    <div class="map-tools" id="mapTools" hidden>
+      <span class="tools-label">EXPLORE THE CITY</span>
+      <div class="tool-segments" role="group" aria-label="City layers">
+        <button type="button" data-layer="structure" class="active">City</button><button type="button" data-layer="dependencies">Links</button><button type="button" data-layer="flows">Paths</button><button type="button" data-layer="hotspots">Hubs</button>
+      </div>
+      <div class="tool-controls"><button type="button" id="resetCamera">⟲ <span>Overview</span></button><button type="button" id="tourButton">✧ <span>Guided tour</span></button><button type="button" id="findButton">⌕ <span>Find module</span></button></div>
+      <p>Roads are decorative. Light links show sampled static imports—not runtime traffic.</p>
+    </div>
+
+    <aside class="inspector" id="inspector" hidden aria-label="Selected module details">
+      <div class="inspector-top"><span class="overline">BUILDING / MODULE RECORD</span><button type="button" class="close-icon" id="closeInspector" aria-label="Close building information">×</button></div>
+      <div class="inspector-glyph" id="inspectorGlyph">◇</div>
+      <div class="inspector-district" id="inspectorDistrict">CORE NEXUS</div>
+      <h2 id="inspectorName">Module name</h2>
+      <p class="inspector-path" id="inspectorPath">src/module</p>
+      <section class="building-issues" id="buildingIssues" hidden aria-labelledby="buildingIssuesHeading">
+        <div class="inspector-subhead" id="buildingIssuesHeading">OPEN GITHUB ISSUES <span id="buildingIssueCount"></span></div>
+        <div id="buildingIssuesList" class="building-issue-list"></div>
+        <button type="button" id="buildingIssuesMore" class="building-issues-more" hidden>Browse all linked issues ↗</button>
+        <p class="issue-disclaimer">Pins indicate references or suggestions—not verified defects in this module.</p>
+      </section>
+      <p class="inspector-description" id="inspectorDescription"></p>
+      <p class="inspector-fact" id="inspectorFact">Based on imported file paths and sampled static imports.</p>
+      <div class="module-metrics"><div><strong id="inspectorFiles">0</strong><span>FILES</span></div><div><strong id="inspectorOut">0</strong><span>IMPORTS OUT</span></div><div><strong id="inspectorIn">0</strong><span>IMPORTS IN</span></div></div>
+      <section class="impact-panel" id="impactPanel" hidden aria-labelledby="impactHeading">
+        <div class="impact-kicker">STATIC CHANGE TRACE <span id="impactCount">0 MODULES</span></div>
+        <h3 id="impactHeading">What could be affected?</h3>
+        <p id="impactMessage">Tracing sampled import connections…</p>
+        <div class="impact-key"><span><i class="impact-dot immediate"></i> Direct importers</span><span><i class="impact-dot indirect"></i> Indirect importers</span></div>
+        <div class="impact-list" id="impactList"></div>
+        <button type="button" class="impact-dismiss" id="exitImpact">Clear highlighted modules ↗</button>
+      </section>
+      <button type="button" id="inspectorAsk" class="module-ask">Ask the assistant about this building <span aria-hidden="true">↗</span></button>
+      <div class="inspector-subhead">OBSERVED CONNECTIONS</div><div class="connection-list" id="inspectorConnections"></div>
+      <div class="inspector-subhead" id="inspectorSymbolsTitle" hidden>SAMPLED DECLARATIONS</div><div class="file-list" id="inspectorSymbols" hidden></div>
+      <div class="inspector-subhead">SAMPLE FILES</div><div class="file-list" id="inspectorFileList"></div>
+      <div class="inspector-bottom"><button type="button" class="secondary-cta" id="inspectorFocus">Focus ↗</button><button type="button" class="secondary-cta" id="inspectorTrace">Trace change impact →</button></div>
+      <p class="inspector-caveat">Insights are inferred from paths and sampled static imports. Review linked source before changing code.</p>
+    </aside>
+
+    <aside class="issue-drawer" id="issueDrawer" hidden aria-label="Open GitHub issue investigation">
+      <div class="inspector-top"><span class="overline">ISSUE RADAR <span class="issue-drawer-separator">/</span> GITHUB</span><button type="button" class="close-icon" id="closeIssueDrawer" aria-label="Close issue investigation">×</button></div>
+      <div class="issue-drawer-context" id="issueDrawerDistrict">PUBLIC ISSUE REPORT</div>
+      <h2 id="issueDrawerHeading">Investigate an issue.</h2>
+      <p class="issue-drawer-desc" id="issueDrawerSubhead">Select an issue to see its report and code context.</p>
+      <div id="issueDrawerChooser" class="issue-drawer-chooser" hidden>
+        <label for="issueDrawerSelect" id="issueDrawerChooseLabel">SELECT AN ISSUE IN THIS BUILDING</label>
+        <select id="issueDrawerSelect" aria-label="Choose a linked GitHub issue to investigate"></select>
+      </div>
+      <section id="issueDetail" hidden>
+        <div class="issue-detail-top"><span class="issue-detail-index" id="issueDetailIndex">ISSUE #0</span><div id="issueDetailLabels" class="issue-detail-labels"></div></div>
+        <div id="issuePlacement" class="issue-placement"></div>
+        <details class="issue-original-report" id="issueOriginalReport">
+          <summary>Original GitHub report <span>Read details</span></summary>
+          <p id="issueDetailBody" class="issue-detail-body"></p>
+        </details>
+        <a id="issueGithubLink" class="issue-github-link" href="https://github.com" target="_blank" rel="noopener noreferrer">Read full issue on GitHub <span aria-hidden="true">↗</span></a>
+        <div class="issue-ai-card">
+          <div class="issue-ai-heading"><span class="issue-ai-icon">✳</span> <span id="issueAiHeading">REPOWORLD DEVELOPER GUIDE</span></div>
+          <div id="issueAiResult" class="issue-ai-result" aria-live="polite">Choose an issue to understand likely code locations.</div>
+          <div class="issue-ai-actions"><button type="button" id="issueFollowUp" class="issue-follow-up" hidden>Ask a follow-up <span aria-hidden="true">↗</span></button><button type="button" id="issueRetry" class="issue-retry" hidden>Try again ↻</button></div>
+        </div>
+      </section>
+      <p class="issue-drawer-caveat">GitHub issues describe reported problems. A building pin means a file was referenced or a location was suggested; neither proves a defect. The guide does not run code or make changes.</p>
+    </aside>
+
+    <aside class="tour-panel" id="tourPanel" hidden aria-label="Guided city tour">
+      <div class="inspector-top"><span class="overline">THE CITY GUIDE</span><button type="button" class="close-icon" id="closeTour" aria-label="Close city tour">×</button></div>
+      <div class="tour-index" id="tourIndex">01 / 05</div><h2 id="tourTitle">Meet your city</h2><p id="tourDescription">Follow a route through its architecture.</p>
+      <div class="tour-controls"><button type="button" class="secondary-cta" id="tourPrev">← Previous</button><button type="button" class="primary-small" id="tourNext">Next stop →</button></div>
+      <button class="tour-ai" type="button" id="aiTourButton">✧ Generate a BharatCode AI tour</button>
+      <div class="tour-question"><label for="aiQuestion">ASK BHARATCODE ABOUT THIS CITY</label><textarea id="aiQuestion" rows="2" maxlength="450" placeholder="Which modules are connected?"></textarea><button type="button" id="askAiButton">Ask the guide ↗</button><p id="aiResponse" hidden></p></div>
+      <p class="inspector-caveat" id="tourDisclosure">Curated explanations describe observed structure, not proven runtime paths.</p>
+    </aside>
+  </main>
+
+  <dialog id="addRepoDialog" class="dialog-shell">
+    <form id="importForm" class="dialog-inner">
+      <div class="modal-topline"><span>CREATE A NEW CITY <span class="modal-num">/ 01</span></span><button type="button" class="close-icon" id="closeImport" aria-label="Close import">×</button></div>
+      <span class="modal-glyph">◇</span><h2>Build your world.</h2>
+      <p>Paste a public GitHub repository URL and we'll create your explorable map.</p>
+      <label for="importInput">GITHUB REPOSITORY</label>
+      <div class="modal-input-row"><span class="input-prefix">github.com/</span><input id="importInput" name="repository" placeholder="owner/repository" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="240" required></div>
+      <p class="input-help">Example: pallets/flask · Public repositories only</p>
+      <p id="importError" class="form-error" hidden role="alert"></p>
+      <button type="submit" id="importButton" class="primary-cta dialog-submit">Create my city <span aria-hidden="true">↗</span></button>
+      <p class="modal-footnote">Our importer reads the directory tree and samples source imports. We never execute repository code.</p>
+    </form>
+  </dialog>
+
+  <dialog id="searchDialog" class="dialog-shell search-dialog">
+    <form id="searchForm" class="dialog-inner">
+      <div class="modal-topline"><span>REPOWORLD <span class="modal-num">/ DEVELOPER CONSOLE</span></span><button type="button" id="closeSearch" class="close-icon" aria-label="Close search">×</button></div>
+      <div class="compass-tabs" role="group" aria-label="Explore code tools">
+        <button type="button" data-compass-tab="ask" class="active" aria-pressed="true">Assistant</button>
+        <button type="button" data-compass-tab="issues" aria-pressed="false">Open issues <span id="issuesTabCount" hidden></span></button>
+        <button type="button" data-compass-tab="find" aria-pressed="false">Find code</button>
+      </div>
+      <div id="findTab" hidden>
+      <h2>Where should you work?</h2>
+      <p class="compass-intro">Describe a feature or search a file path. RepoWorld will point to likely code—not guess at unseen source.</p>
+      <label for="searchInput">FIND CODE</label>
+      <input class="search-input" type="search" id="searchInput" autocomplete="off" autocapitalize="off" maxlength="160" placeholder="Where is login handled?" aria-describedby="searchScope">
+      <div id="searchWelcome" class="search-welcome">
+        <div class="suggest-label">TRY AN EXAMPLE</div>
+        <button type="button" data-suggestion="Where is authentication handled?">Authentication <span>↗</span></button>
+        <button type="button" data-suggestion="Where are API endpoints?">API routes <span>↗</span></button>
+        <button type="button" data-suggestion="Where are the tests?">Tests <span>↗</span></button>
+      </div>
+      <div id="searchResults" class="search-results" role="status" aria-live="polite"></div>
+      <p id="searchScope" class="search-disclosure">Results are inferred from repository paths and sampled filenames. Open source to confirm.</p>
+      <div class="compass-shortcuts"><button type="button" id="quickTour">Take the city tour ↗</button><button type="button" id="showMapOptions">Map views · More</button></div>
+      </div>
+      <div id="askTab" class="assistant-tab">
+        <div class="assistant-intro"><div class="assistant-sign">✳</div><h2>Ask your codebase.</h2>
+          <p>Find where to start, understand a module, or plan a fix—using real repository evidence.</p></div>
+        <div id="assistantThread" class="assistant-thread" role="log" aria-live="polite">
+          <div class="assistant-start"><strong>Your developer guide</strong><span>Ask how a feature works, what to change for a goal, or how to approach an issue.</span></div>
+        </div>
+        <div id="assistantContext" class="assistant-context" hidden></div>
+        <div class="assistant-compose"><label for="assistantQuestion">ASK ABOUT THIS REPOSITORY</label>
+          <textarea id="assistantQuestion" rows="3" maxlength="650" placeholder="How can I add Google OAuth to this repo?"></textarea>
+          <button type="button" id="assistantSend">Send ↗</button></div>
+        <p class="assistant-disclosure" id="assistantDisclosure">Public code excerpts may be sent to BharatCode when AI is configured. Responses are suggestions, not verified code changes.</p>
+      </div>
+      <div id="issuesTab" class="issues-tab" hidden>
+        <div class="issues-title"><div><h2>Open issues, placed in context.</h2><p>Find a place to contribute. Only GitHub's open issues are shown.</p></div>
+          <button type="button" id="refreshIssues" title="Refresh open issues" aria-label="Refresh open issues">↻</button></div>
+        <div class="issue-summary" id="issueSummary">Checking GitHub issues…</div>
+        <div id="issueList" class="issue-list" role="status" aria-live="polite"></div>
+        <p class="issue-disclaimer" id="issueDisclaimer">Placement is based on explicit file references or clearly labeled suggestions; unplaced issues stay unplaced.</p>
+      </div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

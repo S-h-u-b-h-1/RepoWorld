@@ -1,0 +1,34 @@
+# Render Blueprint example. Persistent disks require an eligible paid service.
+# Render sets RENDER_EXTERNAL_URL automatically; use APP_BASE_URL only for a custom domain.
+# Set the server-side API key in the Render dashboard (never in source).
+services:
+  - type: web
+    name: repoworld
+    runtime: python
+    plan: starter
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /api/ready
+    autoDeploy: false
+    disk:
+      name: repoworld-state
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: APP_ENV
+        value: production
+      - key: REPOWORLD_DB_PATH
+        value: /var/data/repoworld.sqlite3
+      - key: REPOWORLD_REQUIRE_MOUNTED_DB
+        value: "1"
+      - key: BHARATCODE_API_KEY
+        sync: false
+      - key: REPOWORLD_AI_GLOBAL_DAILY
+        value: '65'
+      - key: REPOWORLD_AI_GUEST_DAILY
+        value: '10'
+      - key: REPOWORLD_IMPORT_GLOBAL_HOURLY
+        value: '20'

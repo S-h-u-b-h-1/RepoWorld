@@ -1,0 +1,35 @@
+RepoWorld — The City of Code
+Hackathon category: Coding & Developer Tools
+
+RepoWorld is an anonymous, read-only explorer for PUBLIC GitHub repositories. No
+GitHub/Google login or account signup is required. A user pastes a public
+repository URL and explores a 3D city with districts for subsystems and buildings
+for source modules. Optional illuminated links show only sampled STATIC imports,
+not verified runtime execution. File discovery, source search, and change-impact
+tracing are intentionally evidence-limited. A city link contains only the public
+owner/repo name; it never shares guest-session credentials or source snippets.
+New visitors must confirm a GitHub import before any external repository fetch.
+
+Issue Radar retrieves reported open GitHub issues, excludes pull requests, and
+labels building placements as referenced, suggested or unplaced. Clicking an issue
+shows its original report and optional AI investigation. Source discovery checks
+a bounded sample of paths from the current public GitHub tree. Fetched source
+excerpts, not issue-provided code snippets, are the basis for code-evidence claims.
+Where GitHub supplies a commit SHA, the assistant can link to commit-pinned
+source excerpts and line ranges. No code is executed or modified by RepoWorld.
+
+BharatCode Qwen 3.8 27B is integrated through a server-side chat-completions API.
+The model is used for optional architecture explanations, questions about public
+source code, and issue investigation plans. The model API key stays on the server.
+If the key is absent or the provider times out, RepoWorld labels deterministic
+navigation guidance instead of claiming to have generated an AI answer.
+
+AI guidance is not independently validated code correctness, defect reproduction,
+fix execution or test results. Model outputs should be checked against the
+linked source and relevant project tests. Anonymous access is protected with
+per-browser and global budgets, but a public launch also requires hosting-level
+abuse protection.
+
+Repository source URL: NOT YET PUBLISHED.
+Live application URL: NOT YET DEPLOYED.
+Hackathon page: https://auth.bharatcode.ai/hackathon

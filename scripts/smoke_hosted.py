@@ -1,0 +1,97 @@
+"""Safe, read-only launch smoke test against a deployed RepoWorld origin.
+
+By default this checks no GitHub or BharatCode endpoints that spend API quota.
+Explicit --import adds an end-to-end public import + Issue Radar check.
+Never prints auth cookies, CSRF tokens or secret environment values.
+"""
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+from urllib.parse import urlsplit
+
+# Support direct invocation: python scripts/smoke_hosted.py ...
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+import httpx
+
+from app.github import parse_repository, RepoError
+
+
+def _origin(value: str, *, allow_local: bool = False) -> str:
+    parsed=urlsplit(value.rstrip('/'))
+    if parsed.path or parsed.query or parsed.fragment or parsed.username or parsed.password or not parsed.hostname:
+        raise ValueError('Enter only the website origin (no path or query).')
+    if parsed.scheme == 'https':
+        return value.rstrip('/')
+    if allow_local and parsed.scheme == 'http' and parsed.hostname in ('localhost','127.0.0.1'):
+        return value.rstrip('/')
+    raise ValueError('Public smoke testing requires an HTTPS URL.')
+
+
+def run(origin: str, *, import_repo: str | None = None, allow_local: bool = False,
+        transport: httpx.BaseTransport | None = None) -> list[str]:
+    origin=_origin(origin, allow_local=allow_local)
+    notes=[]
+    def check(condition: bool, label: str):
+        if not condition:
+            raise RuntimeError(label)
+        notes.append('PASS '+label)
+
+    with httpx.Client(base_url=origin, transport=transport, timeout=30, follow_redirects=False) as client:
+        health=client.get('/api/health')
+        check(health.status_code==200 and health.json().get('ok') is True, 'Health endpoint')
+        check(health.json().get('version') == '0.9.6', 'Expected RepoWorld v0.9.6')
+        ready=client.get('/api/ready')
+        check(ready.status_code==200 and ready.json().get('ready') is True, 'Deployment readiness')
+        index=client.get('/')
+        check(index.status_code==200 and 'RepoWorld' in index.text, 'Website homepage')
+        check(index.headers.get('x-frame-options')=='DENY', 'Frame protection')
+        check(index.headers.get('cache-control')=='no-cache', 'Frontend updates revalidate')
+        if not allow_local:
+            check('max-age=' in index.headers.get('strict-transport-security',''), 'HTTPS transport policy')
+        session=client.get('/api/session')
+        check(session.status_code==200 and session.json().get('guest') is True, 'Anonymous workspace')
+        check(bool(session.json().get('csrf')), 'Workspace CSRF configured')
+        cookie=session.headers.get('set-cookie','').lower()
+        check('httponly' in cookie or bool(client.cookies.get('rw_session')), 'Session cookie created')
+        if not allow_local:
+            check('secure' in cookie, 'Secure session cookie')
+        check(client.get('/api/repository?url=x/y').status_code==410, 'Legacy unbudgeted import is closed')
+
+        if import_repo:
+            try:
+                owner, repo = parse_repository(import_repo)
+            except RepoError as exc:
+                raise ValueError(exc.detail) from exc
+            payload={'url':f'{owner}/{repo}'}
+            response=client.post('/api/my-repos', json=payload,
+                                 headers={'Origin':origin,'X-RepoWorld-CSRF':session.json()['csrf']},
+                                 timeout=90)
+            check(response.status_code==200, f'Public import {owner}/{repo} (HTTP {response.status_code})')
+            item=response.json()
+            check(bool(item.get('graph',{}).get('nodes')), 'Imported city has buildings')
+            issues=client.get(f"/api/my-repos/{item['id']}/issues", timeout=45)
+            check(issues.status_code==200 and isinstance(issues.json().get('issues'),list), 'GitHub Issue Radar')
+            notes.append('INFO This smoke test deliberately did not call BharatCode AI.')
+        else:
+            notes.append('INFO No GitHub import or BharatCode model calls made.')
+    return notes
+
+
+def main():
+    parser=argparse.ArgumentParser(description='RepoWorld hosted smoke check (does not reveal secrets)')
+    parser.add_argument('url',help='Public HTTPS origin such as https://repoworld.onrender.com')
+    parser.add_argument('--import-repo',default=None,help='Optional public owner/repo (spends import budget)')
+    parser.add_argument('--allow-local',action='store_true',help='Use HTTP loopback for development')
+    args=parser.parse_args()
+    try:
+        for note in run(args.url,import_repo=args.import_repo,allow_local=args.allow_local):
+            print(note)
+        return 0
+    except (ValueError, RuntimeError, httpx.RequestError, KeyError, TypeError) as exc:
+        print('FAIL '+str(exc),file=sys.stderr)
+        return 1
+
+if __name__=='__main__':raise SystemExit(main())
