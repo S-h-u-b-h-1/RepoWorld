@@ -29,7 +29,7 @@ class FakeElement{
   focus(){}
   closest(){return null;}
 }
-function makeApp({authenticated=true,active=true,assistantResult=null,multipleIssues=false,importFailure=null,issueFailure=null,issueFailureMessage=null,browserIssues=null,browserIssueError=null,deepLink=''}={}){
+function makeApp({authenticated=true,active=true,assistantResult=null,multipleIssues=false,importFailure=null,issueFailure=null,issueFailureMessage=null,browserIssues=null,browserIssueError=null,deepLink='',storedLastRepo=null,storageThrows=false}={}){
   const elements=new Map();
   const el=id=>{if(!elements.has(id))elements.set(id,new FakeElement(['importInput','aiQuestion','searchInput','assistantQuestion'].includes(id)?'input':'div'));return elements.get(id);};
   const layers=['structure','dependencies','flows','hotspots'].map(n=>Object.assign(new FakeElement('button'),{dataset:{layer:n}}));
@@ -90,16 +90,22 @@ function makeApp({authenticated=true,active=true,assistantResult=null,multipleIs
     resetCamera(){this.reset=true;}
   }
   const copied=[];
+  const store=new Map();
+  if(storedLastRepo!==null)store.set('repoworld:last-public-repo:v1',storedLastRepo);
+  const localStorage={
+    getItem(key){if(storageThrows)throw Error('Storage blocked');return store.has(key)?store.get(key):null;},
+    setItem(key,value){if(storageThrows)throw Error('Storage blocked');store.set(key,String(value));}
+  };
   const location={origin:'http://127.0.0.1:8004',pathname:'/',search:deepLink,assign(){}};
   const window={RepoWorldRenderer:Renderer,REPOWORLD_COLORS:{frontend:'#88ccff'},REPOWORLD_DISTRICTS:{frontend:{name:'Frontend Boulevard'},api:{name:'API Heights'}},
-    setTimeout(){return 1;},clearTimeout(){},location,navigator:{clipboard:{async writeText(value){copied.push(value);}}}};
+    setTimeout(){return 1;},clearTimeout(){},location,localStorage,navigator:{clipboard:{async writeText(value){copied.push(value);}}}};
   const sandbox={document,window,fetch:fetchStub,console,location,URLSearchParams,URL,
     clearTimeout(){},setTimeout(fn){fn();return 1;},encodeURIComponent,Response};
   vm.runInNewContext(browserIssueSource,sandbox);
   vm.runInNewContext(source,sandbox);
   const flush=()=>new Promise(resolve=>setImmediate(resolve));
   async function boot(){document.onload();for(let i=0;i<4;i++)await flush();}
-  return {document,window,el,layers,compassTabs,calls,copied,boot,get renderer(){return renderer;}};
+  return {document,window,el,layers,compassTabs,calls,copied,store,boot,get renderer(){return renderer;}};
 }
 test('new visitors land directly on Add GitHub repository, without signing in',async()=>{
   const ui=makeApp({authenticated:false,active:false});await ui.boot();
@@ -115,6 +121,38 @@ test('guest users without repositories get a single add-repo empty state',async(
   assert.equal(ui.el('activeRepoTitle').textContent,'RepoWorld');
   ui.el('emptyAddRepo').listeners.click();
   assert.equal(ui.el('addRepoDialog').open,true);
+});
+test('free-tier recovery stores only a validated public name and never auto-imports',async()=>{
+  const first=makeApp({active:false});await first.boot();
+  assert.equal(first.el('reimportRecent').hidden,true);
+  first.el('emptyAddRepo').listeners.click();
+  first.el('importInput').value='testowner/demo-city';
+  await first.el('importForm').listeners.submit({preventDefault(){}});
+  for(let i=0;i<5;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(Array.from(first.store.entries()),[['repoworld:last-public-repo:v1','testowner/demo-city']]);
+  const restored=makeApp({active:false,storedLastRepo:first.store.get('repoworld:last-public-repo:v1')});
+  await restored.boot();
+  assert.equal(restored.el('reimportRecent').hidden,false);
+  assert.equal(restored.el('recentRepoName').textContent,'testowner/demo-city');
+  assert.equal(restored.el('recentRepoHelp').hidden,false);
+  assert.equal(restored.calls.filter(c=>c.url==='/api/my-repos'&&c.opts.method==='POST').length,0);
+  restored.el('reimportRecent').listeners.click();
+  assert.equal(restored.el('addRepoDialog').open,true);
+  assert.equal(restored.el('importInput').value,'testowner/demo-city');
+  assert.equal(restored.calls.filter(c=>c.url==='/api/my-repos'&&c.opts.method==='POST').length,0);
+});
+test('malformed or inaccessible browser storage never launches a repo request',async()=>{
+  for(const storedLastRepo of ['https://evil.example/path','owner/..','owner/../repo','<script>','a'.repeat(500)]){
+    const ui=makeApp({active:false,storedLastRepo});await ui.boot();
+    assert.equal(ui.el('reimportRecent').hidden,true);
+    assert.equal(ui.calls.filter(c=>c.url==='/api/my-repos'&&c.opts.method==='POST').length,0);
+  }
+  const blocked=makeApp({active:false,storageThrows:true});await blocked.boot();
+  assert.equal(blocked.el('reimportRecent').hidden,true);
+  blocked.el('emptyAddRepo').listeners.click();blocked.el('importInput').value='testowner/demo-city';
+  await blocked.el('importForm').listeners.submit({preventDefault(){}});
+  for(let i=0;i<5;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(blocked.el('activeRepoTitle').textContent,'Demo City');
 });
 test('saved repo boots into full-screen city with correct name and optional tools',async()=>{
   const ui=makeApp({active:true});await ui.boot();
