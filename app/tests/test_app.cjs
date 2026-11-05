@@ -739,7 +739,13 @@ test('explicit offline backup survives guest workspace loss and never calls GitH
   const first=makeApp({active:true});await first.boot();
   assert.equal(first.el('saveOfflineCity').hidden,false);
   assert.equal(first.store.has('repoworld:offline-city:v1'),false);
+  const callsBeforeSave=first.calls.length;
   first.el('saveOfflineCity').listeners.click();
+  assert.match(first.el('toast').textContent,/still viewing the live city/);
+  assert.doesNotMatch(first.el('toast').textContent,/require a server workspace/);
+  assert.equal(first.el('cityStatusText').textContent,'PUBLIC GITHUB SNAPSHOT');
+  assert.equal(first.el('refreshCurrentRepo').hidden,false);
+  assert.equal(first.calls.length,callsBeforeSave);
   const backed=first.store.get('repoworld:offline-city:v1');
   assert.ok(backed);
   const second=makeApp({active:false,storedOfflineCity:backed});

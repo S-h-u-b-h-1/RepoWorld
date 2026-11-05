@@ -75,7 +75,7 @@
     try{
       window.RepoWorldOfflineCity.save(state.graph,window.localStorage);
       closePopovers();renderRepos();
-      toast('Public city map saved in this browser. Live tools still require a server workspace.');
+      toast('Offline backup saved. You are still viewing the live city; your current tools are unchanged.');
     }catch(error){toast(error.message||'Browser backup unavailable.',true);}
   }
   async function openOfflineBackup(){
