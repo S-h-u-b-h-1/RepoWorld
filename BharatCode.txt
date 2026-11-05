@@ -31,5 +31,13 @@ per-browser and global budgets, but a public launch also requires hosting-level
 abuse protection.
 
 Repository source URL: https://github.com/S-h-u-b-h-1/RepoWorld
-Live application URL: NOT YET DEPLOYED.
+Live application URL: https://repoworld-3b9e.onrender.com (Render Free; idle cold starts, ephemeral browser workspaces).
 Hackathon page: https://auth.bharatcode.ai/hackathon
+
+On Render Free, when the server receives a GitHub API rate-limit response,
+RepoWorld can fetch a limited open-issue page directly in the visitor's browser
+using the public GitHub CORS API, without a visitor login or server secret.
+That feed is explicitly labeled not independently verified by the server.
+Browser-fed reported paths are only unverified suggestions; the app disables
+server-verified AI issue investigations for these records. Source-verified
+investigation requires authenticated GitHub server access.

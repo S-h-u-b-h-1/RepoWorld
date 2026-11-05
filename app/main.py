@@ -1,4 +1,4 @@
-"""RepoWorld v0.9.7: city, anonymous sharing, and public-launch safeguards."""
+"""RepoWorld v0.9.8: city, anonymous sharing, and public-launch safeguards."""
 from __future__ import annotations
 
 from collections import defaultdict, deque
@@ -24,7 +24,7 @@ from .quotas import reserve_ai, reserve_import, reserve_refresh
 from .request_limits import RequestBodyLimit
 
 APP_ROOT = Path(__file__).resolve().parent
-app = FastAPI(title="RepoWorld", description="Explore a repository as a living city", version="0.9.7", docs_url="/api/docs", redoc_url=None)
+app = FastAPI(title="RepoWorld", description="Explore a repository as a living city", version="0.9.8", docs_url="/api/docs", redoc_url=None)
 app.add_middleware(RequestBodyLimit)
 logger = logging.getLogger("repoworld.import")
 app.mount("/static", StaticFiles(directory=str(APP_ROOT / "static")), name="static")
@@ -66,12 +66,12 @@ async def security_headers(request: Request, call_next):
         "default-src 'self'; script-src 'self'; style-src 'self'; "
         "img-src 'self' data: https://avatars.githubusercontent.com https://lh3.googleusercontent.com "
         "https://lh4.googleusercontent.com https://lh5.googleusercontent.com https://lh6.googleusercontent.com; "
-        "connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+        "connect-src 'self' https://api.github.com; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     if os.getenv("APP_ENV") == "production":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     # The single-page entrypoint and JS/CSS must revalidate after deployments.
-    if request.url.path == "/" or request.url.path in {"/static/app.js", "/static/world.js", "/static/styles.css"}:
+    if request.url.path == "/" or request.url.path in {"/static/app.js", "/static/browser-radar.js", "/static/world.js", "/static/styles.css"}:
         response.headers["Cache-Control"] = "no-cache"
     if request.url.path.startswith("/api/") or request.url.path.startswith("/auth/"):
         response.headers["Cache-Control"] = "no-store"
@@ -112,7 +112,7 @@ async def home():
 @app.get("/api/health")
 async def health():
     """Liveness probe; does not imply the production setup is safe."""
-    return {"ok": True, "product": "RepoWorld", "version": "0.9.7"}
+    return {"ok": True, "product": "RepoWorld", "version": "0.9.8"}
 
 
 @app.get("/api/ready")
@@ -140,7 +140,7 @@ async def ready():
                 db.execute('SELECT 1').fetchone()
         except Exception:
             return JSONResponse(status_code=503,content={'ready':False})
-    return {'ready':True, 'version':'0.9.7'}
+    return {'ready':True, 'version':'0.9.8'}
 
 
 @app.get("/api/session")

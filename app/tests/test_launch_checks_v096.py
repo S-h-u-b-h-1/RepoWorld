@@ -48,15 +48,16 @@ def test_safe_smoke_script_checks_a_mocked_host_without_provider_calls():
     def handler(req):
         seen.append((req.method,req.url.path))
         headers={'x-frame-options':'DENY','cache-control':'no-cache'}
-        if req.url.path == '/api/health':return httpx.Response(200,json={'ok':True,'version':'0.9.7'})
+        if req.url.path == '/api/health':return httpx.Response(200,json={'ok':True,'version':'0.9.8'})
         if req.url.path == '/api/ready':return httpx.Response(200,json={'ready':True})
         if req.url.path == '/':return httpx.Response(200,text='RepoWorld',headers=headers)
+        if req.url.path == '/static/browser-radar.js':return httpx.Response(200,text='window.RepoWorldBrowserIssueRadar=true;',headers=headers)
         if req.url.path == '/api/session':return httpx.Response(200,json={'guest':True,'csrf':'testcsrf'},headers={'set-cookie':'rw_session=example; HttpOnly; SameSite=Lax'})
         if req.url.path == '/api/repository':return httpx.Response(410)
         raise AssertionError('Unexpected provider or endpoint call: '+str(req.url))
     notes=run('http://127.0.0.1:8004',allow_local=True,transport=httpx.MockTransport(handler))
     assert any('No GitHub import' in note for note in notes)
-    assert len(seen)==5
+    assert len(seen)==6
     with pytest.raises(ValueError):_origin('http://malicious.example',allow_local=True)
 
 

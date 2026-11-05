@@ -21,7 +21,8 @@ jobs:
         run: |
           node --check app/static/world.js
           node --check app/static/app.js
+          node --check app/static/browser-radar.js
       - name: Frontend interaction and renderer tests
-        run: node --test app/tests/test_world.cjs app/tests/test_app.cjs
+        run: node --test app/tests/test_world.cjs app/tests/test_app.cjs app/tests/test_browser_radar.cjs
       - name: Compile all backend modules
         run: python -m compileall -q app

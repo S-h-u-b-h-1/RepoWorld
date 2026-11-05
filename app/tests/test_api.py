@@ -53,9 +53,12 @@ async def test_home_and_static_csp():
         r = await client.get('/')
         assert r.status_code == 200 and '<title>RepoWorld' in r.text
         assert "script-src 'self'" in r.headers['content-security-policy']
+        assert "connect-src 'self' https://api.github.com;" in r.headers['content-security-policy']
         assert 'X-Frame-Options'.lower() in {k.lower() for k in r.headers}
         assert (await client.get('/static/world.js')).status_code == 200
         assert (await client.get('/static/styles.css')).status_code == 200
+        browser=(await client.get('/static/browser-radar.js'))
+        assert browser.status_code == 200 and browser.headers['cache-control'] == 'no-cache'
 
 
 def test_static_tour_never_makes_up_node_ids():

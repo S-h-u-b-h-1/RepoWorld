@@ -1,8 +1,8 @@
-# RepoWorld v0.9.7 — The City of Code
+# RepoWorld v0.9.8 — The City of Code
 
 **RepoWorld is a read-only, sign-in-free tool for exploring public GitHub repositories as interactive 3D cities.** Districts are groups of source files; buildings represent modules; illuminated links represent sampled **static imports**, not runtime traffic. Issue Radar displays GitHub's reported open issues as referenced, suggested, or unplaced locations. An optional BharatCode assistant helps developers investigate code and plan safe next steps.
 
-**Status:** v0.9.7 source is published at https://github.com/S-h-u-b-h-1/RepoWorld; its local and mocked-hosting checks passed. The application is **not yet verified as publicly deployed or submitted**. A zero-cost Render preview is configured below (without a paid disk). See [RELEASE_NOTES.md](RELEASE_NOTES.md) and [ROADMAP.md](ROADMAP.md).
+**Status:** Public source: https://github.com/S-h-u-b-h-1/RepoWorld. Free hosted site: https://repoworld-3b9e.onrender.com. The source's v0.9.8 Issue Radar fallback is tested locally and in mocked browsers; the public host and real GitHub API behavior must be checked separately after each deployment. No hackathon submission is claimed.
 
 ## Try RepoWorld (no account)
 
@@ -143,6 +143,16 @@ python scripts/check_production.py
 ```
 
 The production configuration preflight intentionally returns a nonzero status on a local development environment. Focused Chromium checks require Playwright and an installed Chromium executable. The import-recovery regressions and OpenWISP #717 regression use **mocked GitHub API responses**, not a live provider completion.
+
+## v0.9.8: read-only Issue Radar fallback for shared GitHub API limits
+
+The normal Issue Radar remains **server-backed**, including path-reference matching and source-scoped investigation. When that route returns a **GitHub provider HTTP 429**, RepoWorld uses GitHub's officially documented public **browser CORS** support to fetch at most 30 open issue records directly from the visitor's browser. GitHub quota then applies to the visitor's IP rather than Render's shared outbound IP. This is a no-login, no-token, no-paid-service fallback and never contacts private repositories. GitHub or the visitor's network may still rate-limit the request.
+
+**Evidence qualifications:** The browser feed is NOT independently verified by RepoWorld's server. Pull requests are excluded. It only suggests building locations for exact reported file-path mentions, never reports source-observed locations, and never triggers server-verified issue AI investigation from browser-provided content. Users can open canonical GitHub issue links and ask a non-issue-bound question about the imported file map. If RepoWorld's own guest request quota is reached, the fallback is **not** used, preserving the existing safety budget.
+
+For this read-only feature, the CSP's `connect-src` permits only `https://api.github.com` in addition to same-origin. Browser requests use `credentials: omit`; the server's `GITHUB_TOKEN` and `BHARATCODE_API_KEY` are never sent to visitors. Up to 30 issue records on the first page are displayed, so the feed may be partial. There is no claim of full GitHub issue coverage or validated fixes.
+
+**Render Free cold starts remain:** Hosting can take about a minute to wake after 15 minutes idle, and ephemeral SQLite sessions/saved cities reset after sleep, restart, or redeployment. This update helps provider-specific Issue Radar failures; it does not eliminate hosting cold starts or enable BharatCode AI without its private server key.
 
 ## v0.9.7: real public-repository cities without REST quota
 

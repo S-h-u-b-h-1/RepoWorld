@@ -1,3 +1,13 @@
+## v0.9.8 — Read-only browser Issue Radar fallback
+
+- When a server-backed public GitHub issue fetch returns a **GitHub provider** HTTP 429, the browser requests up to 30 open issues directly through GitHub's documented cross-origin public REST API. The request includes **no credentials** and consumes the visitor IP's public allowance, not Render's shared quota.
+- A dedicated `browser-radar.js` module validates exact public GitHub repository URLs, drops pull requests, clips untrusted issue fields and uses canonical GitHub links. Invalid GitHub URLs and failing browser API requests produce visible errors, not fake issue data.
+- Browser-fetched issues are labeled **BROWSER GITHUB FEED · UNVERIFIED BY SERVER**. Paths found in issue text create only `suggested` markers, never verified source observations. Server-verified issue AI investigation is suppressed for this feed; the original report remains accessible.
+- The fallback cannot bypass RepoWorld's own visitor quotas. The unchanged server-backed issue route remains the primary path.
+- CSP remains restrictive while adding `https://api.github.com` to `connect-src`; the new script revalidates on deployment.
+- Desktop and mobile Chromium smoke checks and unit regressions were executed against local fixtures. GitHub CI and actual public API behavior are separate release gates.
+- This does **not** fix Render Free's idle cold starts, ephemeral storage, or the need for private `GITHUB_TOKEN` / `BHARATCODE_API_KEY` for server-verified source investigations and live AI.
+
 ## v0.9.7 — Bounded archive import for public code cities
 
 - Free Render installations **without** `GITHUB_TOKEN` import smaller public GitHub repositories from the official source ZIP endpoint, without spending GitHub REST API quota on initial imports. This is the **primary** free-tier source import path, not a repeated retry after REST rate limiting.

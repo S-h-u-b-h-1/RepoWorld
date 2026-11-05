@@ -42,11 +42,13 @@ def run(origin: str, *, import_repo: str | None = None, allow_local: bool = Fals
     with httpx.Client(base_url=origin, transport=transport, timeout=30, follow_redirects=False) as client:
         health=client.get('/api/health')
         check(health.status_code==200 and health.json().get('ok') is True, 'Health endpoint')
-        check(health.json().get('version') == '0.9.7', 'Expected RepoWorld v0.9.7')
+        check(health.json().get('version') == '0.9.8', 'Expected RepoWorld v0.9.8')
         ready=client.get('/api/ready')
         check(ready.status_code==200 and ready.json().get('ready') is True, 'Deployment readiness')
         index=client.get('/')
         check(index.status_code==200 and 'RepoWorld' in index.text, 'Website homepage')
+        browser_issues=client.get('/static/browser-radar.js')
+        check(browser_issues.status_code==200 and 'RepoWorldBrowserIssueRadar' in browser_issues.text, 'Browser-direct Issue Radar available')
         check(index.headers.get('x-frame-options')=='DENY', 'Frame protection')
         check(index.headers.get('cache-control')=='no-cache', 'Frontend updates revalidate')
         if not allow_local:

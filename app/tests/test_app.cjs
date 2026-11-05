@@ -5,6 +5,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'../static/app.js'),'utf8');
+const browserIssueSource=fs.readFileSync(path.join(__dirname,'../static/browser-radar.js'),'utf8');
 const GRAPH={name:'Demo City',owner:'testowner',branch:'main',source:'github',url:'https://github.com/testowner/demo-city',
   nodes:[{id:'web',name:'Web',kind:'frontend',path:'apps/web',fileCount:6,files:['apps/web/index.ts'],description:'Website'},
     {id:'api',name:'API',kind:'api',path:'services/api',fileCount:5,files:['services/api/index.py'],description:'API service'}],
@@ -28,7 +29,7 @@ class FakeElement{
   focus(){}
   closest(){return null;}
 }
-function makeApp({authenticated=true,active=true,assistantResult=null,multipleIssues=false,importFailure=null,deepLink=''}={}){
+function makeApp({authenticated=true,active=true,assistantResult=null,multipleIssues=false,importFailure=null,issueFailure=null,issueFailureMessage=null,browserIssues=null,browserIssueError=null,deepLink=''}={}){
   const elements=new Map();
   const el=id=>{if(!elements.has(id))elements.set(id,new FakeElement(['importInput','aiQuestion','searchInput','assistantQuestion'].includes(id)?'input':'div'));return elements.get(id);};
   const layers=['structure','dependencies','flows','hotspots'].map(n=>Object.assign(new FakeElement('button'),{dataset:{layer:n}}));
@@ -51,11 +52,18 @@ function makeApp({authenticated=true,active=true,assistantResult=null,multipleIs
     if(url==='/api/session')body=session();
     else if(url==='/api/my-repos/demo')body={id:'demo',graph:GRAPH};
     else if(url==='/api/demo')body={...GRAPH,source:'demo',url:'',owner:'Repoworld Studio',name:'Orbit Commerce',warnings:['Fictional demonstration only.']};
+    else if(typeof url==='string'&&url.startsWith('https://api.github.com/repos/')){
+      if(browserIssueError){code=browserIssueError;body={message:'API rate limited from browser'};}
+      else body=browserIssues||[];
+    }
     else if(url==='/api/my-repos/demo/issues'){
+      if(issueFailure){code=issueFailure;body={error:issueFailureMessage||'Server-side GitHub issue API rate limit reached.'};}
+      else {
       const baseIssue={number:4,title:'Fix login in services/api/index.py',url:'https://github.com/testowner/demo-city/issues/4',labels:['bug'],body:'services/api/index.py\nLogin fails on expired sessions.',matches:[{nodeId:'api',confidence:'referenced',evidence:'Issue references services/api/index.py'}]};
       const unplaced={number:5,title:'Documentation',url:'https://github.com/testowner/demo-city/issues/5',labels:[],matches:[]};
       const extras=multipleIssues?[{number:717,title:'Add logging for api requests',url:'https://github.com/testowner/demo-city/issues/717',labels:['feature'],body:'services/api/index.py requires logging',matches:[{nodeId:'api',confidence:'referenced',evidence:'Issue references services/api/index.py'}]},{number:789,title:'Handle short commit messages',url:'https://github.com/testowner/demo-city/issues/789',labels:['bug'],body:'services/api/index.py prefix exception',matches:[{nodeId:'api',confidence:'referenced',evidence:'Issue references services/api/index.py'}]},{number:821,title:'Improve module error handling',url:'https://github.com/testowner/demo-city/issues/821',labels:['enhancement'],body:'services/api/index.py',matches:[{nodeId:'api',confidence:'referenced',evidence:'Issue references services/api/index.py'}]}]:[];
       body={total:2+extras.length,placed:1+extras.length,unplaced:1,partial:false,scope:'Mock public issues',issues:[baseIssue,...extras,unplaced],byNode:{api:{referenced:[4,...extras.map(e=>e.number)],suggested:[]}}};
+      }
     }
     else if(url==='/api/my-repos/demo/assistant'&&opts.method==='POST')body=assistantResult||{mode:'navigation',answer:'Start with API.',steps:['Read source'],nodeIds:['api'],sources:[{file:'services/api/index.py',url:'https://github.com/testowner/demo-city/blob/main/services/api/index.py'}],disclosure:'Navigation only'};
     else if(url==='/api/my-repos/demo/find?q=Where%20is%20login%20handled%3F')body={query:'Where is login handled?',results:[{nodeId:'api',name:'API',path:'services/api',kind:'api',files:['services/api/index.py']}],scope:'Path-based matches.'};
@@ -85,8 +93,9 @@ function makeApp({authenticated=true,active=true,assistantResult=null,multipleIs
   const location={origin:'http://127.0.0.1:8004',pathname:'/',search:deepLink,assign(){}};
   const window={RepoWorldRenderer:Renderer,REPOWORLD_COLORS:{frontend:'#88ccff'},REPOWORLD_DISTRICTS:{frontend:{name:'Frontend Boulevard'},api:{name:'API Heights'}},
     setTimeout(){return 1;},clearTimeout(){},location,navigator:{clipboard:{async writeText(value){copied.push(value);}}}};
-  const sandbox={document,window,fetch:fetchStub,console,location,URLSearchParams,
+  const sandbox={document,window,fetch:fetchStub,console,location,URLSearchParams,URL,
     clearTimeout(){},setTimeout(fn){fn();return 1;},encodeURIComponent,Response};
+  vm.runInNewContext(browserIssueSource,sandbox);
   vm.runInNewContext(source,sandbox);
   const flush=()=>new Promise(resolve=>setImmediate(resolve));
   async function boot(){document.onload();for(let i=0;i<4;i++)await flush();}
@@ -402,4 +411,56 @@ test('invalid or external deep links never start a repository fetch or import mo
   assert.equal(ui.el('emptyState').hidden,false);
   assert.equal(ui.el('addRepoDialog').open,undefined);
   assert.equal(ui.calls.filter(call=>call.url==='/api/my-repos').length,0);
+});
+
+test('Issue Radar browser fallback labels server-unverified hints after GitHub provider rate limit',async()=>{
+  const raw=[
+    {number:12,title:'Fix services/api/index.py login issue',state:'open',body:'services/api/index.py fails on invalid token',
+      labels:[{name:'bug'}],comments:5,updated_at:'2026-11-05T09:00:00Z',html_url:'https://attacker.invalid/poison'},
+    {number:13,title:'Docs only',state:'open',body:'needs more documentation',labels:[]},
+    {number:14,title:'Pull request',state:'open',body:'services/api/index.py',pull_request:{url:'x'},labels:[]}
+  ];
+  const ui=makeApp({active:true,issueFailure:429,browserIssues:raw});await ui.boot();
+  for(let i=0;i<7;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ui.el('issuesTabCount').textContent,'2');
+  assert.match(ui.el('issueMapCount').textContent,/2 OPEN ISSUES · 1 ON MAP/);
+  assert.match(ui.el('issueSummary').textContent,/BROWSER GITHUB FEED · UNVERIFIED BY SERVER/);
+  assert.deepEqual(Array.from(ui.renderer.issueMarkers.api?.suggested||[]),[12]);
+  assert.equal(ui.renderer.issueMarkers.api?.referenced.length,0);
+  const calls=ui.calls.filter(c=>c.url.startsWith('https://api.github.com/'));
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].opts.credentials,'omit');
+  assert.equal(calls[0].opts.mode,'cors');
+  ui.el('mapCommandTrigger').listeners.click();ui.compassTabs[1].listeners.click();
+  assert.equal(ui.el('issueList').children.length,2);
+  ui.el('issueList').children[0].children[0].children[0].listeners.click();
+  assert.equal(ui.el('issueDetailIndex').textContent,'OPEN ISSUE #12');
+  assert.equal(ui.el('issueGithubLink').href,'https://github.com/testowner/demo-city/issues/12');
+  assert.match(ui.el('issueAiHeading').textContent,/UNVERIFIED/);
+  assert.equal(ui.calls.filter(c=>c.url==='/api/my-repos/demo/assistant').length,0);
+  assert.match(ui.el('issueAiResult').textContent,/not independently checked/);
+  ui.el('issueFollowUp').listeners.click();
+  assert.match(ui.el('assistantQuestion').value,/not verified/);
+  assert.ok(!ui.el('assistantContext').textContent.includes('#12'));
+});
+test('browser issue fallback reports both GitHub quotas accurately without fabricating issues',async()=>{
+  const ui=makeApp({active:true,issueFailure:429,browserIssueError:429});await ui.boot();
+  for(let i=0;i<7;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.match(ui.el('issueSummary').textContent,/Browser fallback/);
+  assert.match(ui.el('issueSummary').textContent,/also rate-limiting/);
+  assert.equal(ui.el('issueMapLegend').hidden,true);
+  assert.equal(ui.el('issuesTabCount').hidden,true);
+});
+test('RepoWorld guest quota cannot be bypassed by browser-direct issue requests',async()=>{
+  const ui=makeApp({active:true,issueFailure:429,issueFailureMessage:'Too many requests. Try again shortly.'});
+  await ui.boot();for(let i=0;i<5;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ui.calls.filter(c=>typeof c.url==='string'&&c.url.startsWith('https://api.github.com/')).length,0);
+  assert.match(ui.el('issueSummary').textContent,/Too many requests/);
+});
+test('successful Issue Radar avoids browser API and retains server-qualified issue positions',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  for(let i=0;i<4;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ui.calls.filter(c=>typeof c.url==='string'&&c.url.startsWith('https://api.github.com/')).length,0);
+  assert.equal(ui.renderer.issueMarkers.api.referenced[0],4);
+  assert.doesNotMatch(ui.el('issueSummary').textContent,/BROWSER GITHUB FEED/);
 });

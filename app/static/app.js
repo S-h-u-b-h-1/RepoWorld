@@ -1,4 +1,4 @@
-/* RepoWorld v0.9.6: minimal city, source-scoped issue guide, and shareable public-repository entry points. */
+/* RepoWorld v0.9.8: minimal city, source-scoped issue guide, and shareable public-repository entry points. */
 (function(){
   'use strict';
   const $=id=>document.getElementById(id);
@@ -585,6 +585,12 @@
     $('issueFollowUp').hidden=false;$('issueRetry').hidden=result.providerStatus!=='timeout';
   }
   async function explainIssue(issue,nodeId){
+    if(state.radar?.browserFallback){
+      $('issueRetry').hidden=true;$('issueFollowUp').hidden=false;
+      setText('issueAiHeading','BROWSER GITHUB FEED · UNVERIFIED');
+      setText('issueAiResult','The issue title and description came from your browser’s public GitHub request. RepoWorld’s server has not independently checked this report or inspected its source. Open the original issue to verify it. Enable a private server-side GITHUB_TOKEN for source-scoped issue investigation.');
+      return;
+    }
     const repoId=state.activeId,number=issue.number,key=`${repoId}:${number}:${nodeId||''}`,serial=++state.issueInsightRevision;
     const previous=state.issueInsightCache.get(key);
     if(previous){retainObservedIssueLocations(number,previous);renderIssueInsight(previous);return;}
@@ -606,6 +612,11 @@
   function followUpIssue(){
     const issue=issueFor(state.issueSelectedNumber);if(!issue)return;
     const nodeId=state.issueOpenNode;
+    if(state.radar?.browserFallback){
+      setAssistantContext(nodeId,null);openFind('','ask');
+      $('assistantQuestion').value=('Using only the imported file map, which modules might be relevant to: '+issue.title+'? The issue title came from my browser GitHub feed and was not verified by this server; avoid claims about a confirmed defect.').slice(0,650);
+      $('assistantQuestion').focus();return;
+    }
     setAssistantContext(nodeId,issue.number);openFind('','ask');
     $('assistantQuestion').value=`For issue #${issue.number} (${issue.title}), help me investigate the next step using source evidence.`.slice(0,650);
     $('assistantQuestion').focus();
@@ -621,7 +632,25 @@
       $('issueMapLegend').hidden=!data.total;
       setText('issueMapCount',`${data.total} OPEN ISSUE${data.total===1?'':'S'} · ${data.placed} ON MAP`);
       setText('issuesTabCount',data.total>0?data.total:'');$('issuesTabCount').hidden=!data.total;
-    }catch(e){if(repoId!==state.activeId||serial!==state.radarRevision)return;state.radarError=e.message;state.renderer?.setIssueMarkers?.({});$('issueMapLegend').hidden=true;}
+    }catch(e){
+      if(repoId!==state.activeId||serial!==state.radarRevision)return;
+      // Fallback only for GitHub's provider quota, never our own guest quotas.
+      if(e.status===429&&/GitHub/i.test(e.message)&&state.graph?.source==='github'){
+        try{
+          const direct=await window.RepoWorldBrowserIssueRadar(state.graph);
+          if(repoId!==state.activeId||serial!==state.radarRevision)return;
+          state.radar=direct;state.radarError=null;
+          state.renderer?.setIssueMarkers?.(direct.byNode);
+          $('issueMapLegend').hidden=!direct.total;
+          setText('issueMapCount',direct.total+' OPEN ISSUES · '+direct.placed+' ON MAP');
+          setText('issuesTabCount',direct.total>0?direct.total:'');$('issuesTabCount').hidden=!direct.total;
+        }catch(browserError){
+          if(repoId!==state.activeId||serial!==state.radarRevision)return;
+          state.radarError=e.message+' Browser fallback: '+browserError.message;
+          state.renderer?.setIssueMarkers?.({});$('issueMapLegend').hidden=true;
+        }
+      }else{state.radarError=e.message;state.renderer?.setIssueMarkers?.({});$('issueMapLegend').hidden=true;}
+    }
     renderIssueRadar();if(state.chosen)renderBuildingIssues(state.chosen);
   }
   function issuePlacementName(match){
@@ -654,7 +683,7 @@
     const area=$('issueList');area.replaceChildren();
     if(state.radarError){setText('issueSummary','Issue feed unavailable: '+state.radarError);return;}
     if(!state.radar){setText('issueSummary','Checking GitHub open issues…');return;}
-    const info=state.radar;setText('issueSummary',`${info.total} open issues sampled · ${info.placed} placed · ${info.unplaced} unplaced${info.partial?' · Partial listing':''}`);
+    const info=state.radar;setText('issueSummary',(info.browserFallback?'BROWSER GITHUB FEED · UNVERIFIED BY SERVER · ':'')+`${info.total} open issues sampled · ${info.placed} placed · ${info.unplaced} unplaced${info.partial?' · Partial listing':''}`);
     for(const item of info.issues||[])area.append(issueItem(item));
     if(!area.children.length){const p=document.createElement('p');p.className='issue-plain';p.textContent='No open GitHub issues found in this sample.';area.append(p);}
     setText('issueDisclaimer',info.scope||'Issue locations are suggestions, not proven affected files.');
