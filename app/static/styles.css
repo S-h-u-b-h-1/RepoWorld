@@ -280,3 +280,33 @@
 
 #importDemo{width:100%;margin-top:10px;border:1px solid #7299c05c;background:rgba(14,37,63,.7);color:#d5e6f7;padding:11px 12px;font-size:11px;border-radius:9px;text-align:center}
 #importDemo:hover{border-color:#a8caeb;background:rgba(30,64,93,.85)}
+
+
+/* v0.9.9: restore architectural emphasis, larger legible controls, no new sidebar. */
+:where(.inspector,.tour-panel,.issue-drawer,.map-tools,.popover,.dialog-shell,.scene-tooltip,.search-dialog){font-size:14px}
+.repo-caption,.overline,.inspector-subhead,.modal-topline,.popover-heading,.tools-label,.issue-drawer-chooser label,.insight-eyebrow,.insight-section h3,.issue-ai-heading{font-size:11px;letter-spacing:.09em}
+.guest-kicker,.world-status,.city-hint,.issue-map-legend,.empty-assurance{font-size:11px;letter-spacing:.075em}
+.repo-menu-item strong,.scene-tooltip strong,.search-result,.issue-heading a,.building-issue-row strong,.chat-bubble,.inspector-description,.dialog-inner p,.issue-detail-body,.issue-ai-result,.insight-list li,.issue-insight-sources a{font-size:14px;line-height:1.6}
+.scene-tooltip{max-width:min(295px,calc(100vw - 28px));padding:12px 14px}
+.scene-tooltip span,.repo-menu-item small,.inspector-path,.building-issue-row small,.file-row,.issue-plain,.insight-disclosure,.observed-hint,.observed-source-location small{font-size:12px;line-height:1.55}
+.tool-segments button,.tool-controls button,.map-tools p,.map-command-trigger,.issue-ai-actions button,.issue-picker span{font-size:13px;line-height:1.45}
+.map-tools{width:min(390px,calc(100vw - 32px));padding:18px 18px 17px}
+.inspector,.tour-panel{width:min(380px,calc(100vw - 32px));padding:24px}
+.map-command-trigger{padding:12px 16px}
+.district-controls{margin-top:16px;display:flex;flex-direction:column;gap:8px}
+.district-controls label{font-size:11px;font-weight:650;letter-spacing:.08em;color:#b6c8d9}
+.district-controls select{width:100%;min-height:42px;border:1px solid #515660;background:#22262d;color:#e4eef9;border-radius:9px;padding:10px 12px;font:500 13px system-ui;cursor:pointer}
+.district-controls select:focus-visible,.city-camera-controls button:focus-visible{outline:2px solid #b1d9fd;outline-offset:2px}
+.city-camera-controls{display:flex;align-items:stretch;gap:9px;margin-top:10px}
+.city-camera-controls button{min-height:40px;border:1px solid #4b5360;background:#25292e;color:#e1ecf5;border-radius:8px;padding:8px 11px;font-size:12px;font-weight:600}
+.city-camera-controls button:hover{background:#343b45}
+.city-camera-controls>button{flex:1;text-align:left}
+.zoom-buttons{display:flex;gap:5px}.zoom-buttons button{width:42px;font-size:18px}
+@media(max-width:650px){.inspector,.tour-panel{width:calc(100vw - 28px);max-width:380px;padding:20px}.map-tools{width:calc(100vw - 28px);right:14px;max-height:min(75dvh,610px);overflow:auto}.guest-kicker{font-size:10px;letter-spacing:.055em}.world-status,.city-hint{font-size:10px}.map-command-trigger{font-size:12px}.issue-drawer .issue-ai-result{font-size:14px}.issue-drawer h2{font-size:24px}}
+
+/* v0.9.9 legibility pass for remaining small metadata and mobile copy. */
+.issue-number,.issue-label,.issue-place,.issue-detail-labels span,.issue-content-heading,.issue-insight-label,.issue-picker strong,.issue-github-link,.issue-placement small,.building-issue-action,.building-issues .issue-disclaimer,.assistant-disclosure,.assistant-meta,.impact-key,.module-metrics span,.inspector-caveat,.search-result small,.search-result .rank,.result-meta .rank,.insight-more summary,.insight-more p,.issue-original-report summary span,.issue-insight-sources a small{font-size:12px;line-height:1.5}
+.insight-disclosure,.observed-hint,.input-help{font-size:12px!important;line-height:1.55!important}
+.assistant-intro p,.issues-title p,.compass-intro{font-size:14px!important;line-height:1.65}
+.dialog-inner label,.tour-question label,.assistant-compose label,.tour-index,.inspector-district,.impact-kicker{font-size:12px;line-height:1.5}
+@media(max-width:650px){.issue-map-legend{font-size:10px}.city-hint{white-space:normal;text-align:center;max-width:52vw}.assistant-intro p,.issues-title p{font-size:13px!important}}

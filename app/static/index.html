@@ -19,7 +19,7 @@
     <div class="world-ambient" aria-hidden="true"></div>
     <div id="worldBackdrop" class="world-backdrop" aria-hidden="true"></div>
     <div class="canvas-stage" id="canvasStage" hidden>
-      <canvas id="worldCanvas" tabindex="0" role="application" aria-label="Interactive repository city. Drag to orbit, scroll or pinch to zoom toward the pointer, Shift-drag to pan, double-click to reset, click a building to inspect its module, or select an issue pin to investigate an open GitHub issue."></canvas>
+      <canvas id="worldCanvas" tabindex="0" role="application" aria-label="Interactive repository city. Drag to orbit, wheel or pinch to zoom, Shift-drag to pan, double-click to reset, arrow keys to orbit, plus and minus to zoom, Home to reset, click a building to inspect its module, or select an issue pin to investigate an open GitHub issue."></canvas>
       <div class="city-glass-overlay" aria-hidden="true"></div>
       <div id="sceneTooltip" class="scene-tooltip" role="tooltip" hidden></div>
     </div>
@@ -66,7 +66,9 @@
         <button type="button" data-layer="structure" class="active">City</button><button type="button" data-layer="dependencies">Links</button><button type="button" data-layer="flows">Paths</button><button type="button" data-layer="hotspots">Hubs</button>
       </div>
       <div class="tool-controls"><button type="button" id="resetCamera">⟲ <span>Overview</span></button><button type="button" id="tourButton">✧ <span>Guided tour</span></button><button type="button" id="findButton">⌕ <span>Find module</span></button></div>
-      <p>Roads are decorative. Light links show sampled static imports—not runtime traffic.</p>
+      <div class="district-controls"><label for="districtJump">JUMP TO A DISTRICT</label><select id="districtJump" aria-label="Focus on a code district"></select></div>
+      <div class="city-camera-controls"><button type="button" id="focusHub" title="Focus the module with the most sampled static links">✧ Focus most connected module</button><div class="zoom-buttons"><button type="button" id="zoomOut" aria-label="Zoom out of city">−</button><button type="button" id="zoomIn" aria-label="Zoom into city">+</button></div></div>
+      <p>Wheel/pinch to zoom · Shift-drag to pan · Double-click to reset. Roads are decorative; glowing links show sampled static imports only.</p>
     </div>
 
     <aside class="inspector" id="inspector" hidden aria-label="Selected module details">

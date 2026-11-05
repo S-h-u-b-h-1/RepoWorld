@@ -1,14 +1,18 @@
-# RepoWorld v0.9.8 — The City of Code
+# RepoWorld v0.9.9 — The City of Code
 
 **RepoWorld is a read-only, sign-in-free tool for exploring public GitHub repositories as interactive 3D cities.** Districts are groups of source files; buildings represent modules; illuminated links represent sampled **static imports**, not runtime traffic. Issue Radar displays GitHub's reported open issues as referenced, suggested, or unplaced locations. An optional BharatCode assistant helps developers investigate code and plan safe next steps.
 
-**Status:** Public source: https://github.com/S-h-u-b-h-1/RepoWorld. Free hosted site: https://repoworld-3b9e.onrender.com. The source's v0.9.8 Issue Radar fallback is tested locally and in mocked browsers; the public host and real GitHub API behavior must be checked separately after each deployment. No hackathon submission is claimed.
+**Status:** Public source: https://github.com/S-h-u-b-h-1/RepoWorld. Free hosted site: https://repoworld-3b9e.onrender.com. The v0.9.8 Issue Radar fallback and v0.9.9 visual/navigation updates are CI-tested and in mocked browsers; the public host and real GitHub API behavior must be checked separately after each deployment. No hackathon submission is claimed.
 
 ## Fast free launch page (static CDN)
 
 Use **https://repoworld-launch.onrender.com** as the first-visit and hackathon entry URL. It is a separate **free Render static site**, not a second Python application. Its lightweight HTML/CSS loads without waking the backend, displays an illustrative 3D city fixture, and probes the actual backend's public SVG favicon. The launcher now probes the public **/api/ready.svg** endpoint; the backend serves a loadable, uncached SVG only after its existing database/readiness checks succeed. When that image genuinely loads, the launcher opens the real app at **https://repoworld-3b9e.onrender.com**. Visitors can also follow its direct link or retry.
 
 The launcher preserves only validated public `?repo=owner%2Frepo` parameters. It never reads or stores session cookies, CSRF values, private code, or BharatCode secrets; browsers may automatically attach an existing backend cookie to its image readiness request. This improves first paint and honest cold-start feedback; **it does not eliminate Render Free's backend spin-up delay or ephemeral data loss**. The interactive explorer, GitHub importer, and AI assistant remain on the existing Python service. Static launch tests are part of GitHub CI.
+
+## City readability and navigation (v0.9.9)
+
+The original near-black, floating-district perspective remains. Decorative blocks are quieter, real source-module buildings have raised roofs and camera-aware lit façades, and the symbolic central beacon is slightly less dominant. Labels, issue text, menus, tooltips and inspector copy are larger. Open **Explore code → Map views · More** for a district jump, a most-connected-module focus (only sampled static links count), and accessible +/− zoom buttons. Existing wheel/pinch zoom, Shift-drag pan and double-click reset remain. This upgrade does not change source evidence or classify decorative buildings as code.
 
 ## Try RepoWorld (no account)
 

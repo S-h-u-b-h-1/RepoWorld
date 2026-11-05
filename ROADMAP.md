@@ -11,6 +11,12 @@
 - Free static cold-start launcher: https://repoworld-launch.onrender.com, backed by an independent CDN site with a direct link to the real explorer and checked-in CI tests. Its SVG image probe now checks **actual backend readiness**, not merely successful static asset delivery; live rollout remains to be verified.
 - Same-browser, client-only **last public repository** reminder allows explicit re-import after ephemeral database loss; it never caches code or secretly replays imports. This does not solve durable graph/workspace storage.
 
+## v0.9.9 — readability and existing-city improvements
+
+- Keep the older near-black floating city and minimal overlay structure. Rebalance real module towers versus decorative blocks, add stronger roofs and camera-visible window faces, and enlarge labels and key text.
+- Add district jump, most-connected-module camera focus, and zoom buttons **inside existing map options**, preserving the uncluttered default view. Sampled static imports remain the only link evidence.
+- CI and actual hosted visual/mobile verification are separate gates; monitor overlap and render performance across large repositories.
+
 ## Open release gates (not assumed complete)
 1. **v0.9.8 live check:** GitHub CI, Render deployed commit, public /api/health and /api/ready, and a real browser Issue Radar test. Local fixture tests cannot certify GitHub CORS/network access for every visitor.
 2. **Authenticated provider reliability:** Add a least-privilege server-side GITHUB_TOKEN privately on Render if source-verified issue investigations must work when the server's shared GitHub IP is rate-limited; verify behavior and 401/403 handling.

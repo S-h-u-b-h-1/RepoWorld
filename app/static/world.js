@@ -79,8 +79,8 @@
           else{const cx=i%columns,cz=Math.floor(i/columns);
             node.x=center.x+(cx-(columns-1)/2)*4.4;
             node.z=center.z+(cz-(nodeRows-1)/2)*4.8;}
-          node.width=clamp(1.6+Math.log2(Math.max(1,node.fileCount)+1)*.23,1.85,3.3);
-          node.height=clamp(5.1+Math.log2(Math.max(1,node.fileCount)+1)*1.15+hash(node.id)*3.2,5.4,13.8);
+          node.width=clamp(1.65+Math.log2(Math.max(1,node.fileCount)+1)*.26,1.9,3.45);
+          node.height=clamp(5.5+Math.log2(Math.max(1,node.fileCount)+1)*1.29+hash(node.id)*2.9,6.2,15.4);
           node.color=COLORS[kind];node.district=DISTRICTS[kind].name;
           node.landmark=false;node.degree=0;
         });
@@ -437,15 +437,15 @@
     drawDecorations(ctx){
       // Streetscape is decorative. Only prominent towers are graph modules.
       for(const d of this.districts){
-        const cells=d.central?8:6,blocks=[];
+        const cells=d.central?7:5,blocks=[];
         for(let row=0;row<cells;row++)for(let col=0;col<cells;col++){
           const idx=row*cells+col;
           const x=d.center.x+((col+.5)/cells*2-1)*(d.halfWidth-1.5);
           const z=d.center.z+((row+.5)/cells*2-1)*(d.halfDepth-1.5);
           if(d.central&&Math.hypot(x,z)<4.2)continue;
           if(d.nodes.some(n=>Math.hypot(n.x-x,n.z-z)<2.2))continue;
-          const w=(d.central?.59:.49)+hash(d.kind+'-w-'+idx)*.39;
-          const h=1.5+hash(d.kind+'-h-'+idx)*(d.central?7.1:5.4);
+          const w=(d.central?.48:.41)+hash(d.kind+'-w-'+idx)*.25;
+          const h=1.1+hash(d.kind+'-h-'+idx)*(d.central?4.5:3.7);
           blocks.push({x,z,w,h,idx,depth:this.project(x,h/2,z).depth});
         }
         blocks.sort((a,b)=>b.depth-a.depth);
@@ -453,10 +453,10 @@
           const top=[[-w,h,-w],[w,h,-w],[w,h,w],[-w,h,w]].map(v=>this.project(x+v[0],v[1],z+v[2]));
           const bot=[[-w,0,-w],[w,0,-w],[w,0,w],[-w,0,w]].map(v=>this.project(x+v[0],v[1],z+v[2]));
           ctx.save();
-          poly(ctx,[top[1],top[2],bot[2],bot[1]]);ctx.fillStyle=mix('#163e67',d.color,.38);ctx.fill();
-          poly(ctx,[top[2],top[3],bot[3],bot[2]]);ctx.fillStyle=mix('#102844',d.color,.26);ctx.fill();
-          poly(ctx,top);ctx.fillStyle=mix('#83b5dc',d.color,.18);ctx.fill();
-          ctx.strokeStyle=rgba('#c5e5fa',.40);ctx.lineWidth=.52;ctx.stroke();
+          poly(ctx,[top[1],top[2],bot[2],bot[1]]);ctx.fillStyle=mix('#13283b',d.color,.18);ctx.fill();
+          poly(ctx,[top[2],top[3],bot[3],bot[2]]);ctx.fillStyle=mix('#0b1a2c',d.color,.11);ctx.fill();
+          poly(ctx,top);ctx.fillStyle=mix('#38506a',d.color,.18);ctx.fill();
+          ctx.strokeStyle=rgba('#b9d9f4',.22);ctx.lineWidth=.5;ctx.stroke();
           if(idx%3===0){
             const a=this.project(x+w,h*.34,z+w),b=this.project(x+w,h*.86,z+w);
             ctx.strokeStyle='rgba(213,241,255,.45)';ctx.lineWidth=.7;
@@ -469,7 +469,7 @@
     drawRepositoryBeacon(ctx){
       const main=this.districts.find(d=>d.central);if(!main)return;
       // A symbolic city landmark for the repository itself, not a claimed entrypoint.
-      const x=0,z=0,w=3.0,h=23.5;
+      const x=0,z=0,w=2.85,h=20.5;
       const b=[[-w,0,-w],[w,0,-w],[w,0,w],[-w,0,w]].map(v=>this.project(x+v[0],v[1],z+v[2]));
       const t=[[-w,h,-w],[w,h,-w],[w,h,w],[-w,h,w]].map(v=>this.project(x+v[0],v[1],z+v[2]));
       ctx.save();
@@ -483,7 +483,7 @@
       ctx.strokeStyle='rgba(206,235,255,.78)';ctx.lineWidth=1.4;ctx.stroke();
       poly(ctx,t);ctx.fillStyle='rgba(209,234,255,.87)';ctx.fill();
       // Architectural spire and inner illumination.
-      const spire=this.project(x,h+7,z),roof=this.project(x,h,z);
+      const spire=this.project(x,h+5.5,z),roof=this.project(x,h,z);
       ctx.beginPath();ctx.moveTo(spire.x,spire.y);ctx.lineTo(roof.x,roof.y);
       ctx.strokeStyle='rgba(178,218,255,.87)';ctx.shadowBlur=17;ctx.shadowColor='#91c6ff';ctx.lineWidth=1.8;ctx.stroke();ctx.shadowBlur=0;
       const icon=this.project(x,h*.59,z+w+.06);
@@ -578,18 +578,48 @@
         ctx.lineWidth=selected?1.4:.78;ctx.strokeStyle=rgba('#b6cde1',selected?.94:.45);
         ctx.shadowColor=rgba(color,.45);ctx.shadowBlur=selected?9:1;ctx.stroke();ctx.shadowBlur=0;
       }
-      // Horizontal floor bands and deterministic lit windows give each tower texture.
-      for(let level=1;level<Math.min(Math.floor(h/1.45),7);level++){
-        const y=h*(level/(Math.floor(h/1.45)+1));
-        const a=this.project(n.x+w+.025,y,n.z-w),b=this.project(n.x+w+.025,y,n.z+w);
-        const c=this.project(n.x-w,y,n.z+w+.025),d=this.project(n.x+w,y,n.z+w+.025);
-        ctx.strokeStyle=rgba('#a8d8fa',.29);ctx.lineWidth=.56;
-        ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.moveTo(c.x,c.y);ctx.lineTo(d.x,d.y);ctx.stroke();
+      // Raised architectural crown restores the original tower silhouette.
+      // These are still the exact modules from the imported repository.
+      const capWidth=w*1.085,capHeight=.37;
+      const rim=[[-capWidth,h,-capWidth],[capWidth,h,-capWidth],
+        [capWidth,h,capWidth],[-capWidth,h,capWidth]].map(p=>this.project(n.x+p[0],p[1],n.z+p[2]));
+      const crown=[[-capWidth,h+capHeight,-capWidth],[capWidth,h+capHeight,-capWidth],
+        [capWidth,h+capHeight,capWidth],[-capWidth,h+capHeight,capWidth]].map(p=>this.project(n.x+p[0],p[1],n.z+p[2]));
+      poly(ctx,[rim[1],rim[2],crown[2],crown[1]]);
+      ctx.fillStyle=mix('#152d46',color,.27);ctx.fill();
+      poly(ctx,[rim[2],rim[3],crown[3],crown[2]]);
+      ctx.fillStyle=mix('#101e32',color,.19);ctx.fill();
+      poly(ctx,crown);ctx.fillStyle=mix('#587890',color,.37);ctx.fill();
+      ctx.strokeStyle=rgba(selected?'#f4fbff':color,selected?.96:.72);
+      ctx.lineWidth=selected?1.8:1.1;ctx.stroke();
+      // Windows and mullions follow the two camera-visible facades.
+      const visibleX=Math.sin(this.yaw)<0?w:-w;
+      const visibleZ=Math.cos(this.yaw)>0?-w:w;
+      const facesVisible=[
+        (side,y)=>this.project(n.x+visibleX+Math.sign(visibleX)*.025,y,n.z+side),
+        (side,y)=>this.project(n.x+side,y,n.z+visibleZ+Math.sign(visibleZ)*.025)
+      ];
+      const floors=Math.min(8,Math.max(3,Math.floor(h/1.6)));
+      for(let facadeIndex=0;facadeIndex<facesVisible.length;facadeIndex++){
+        const point=facesVisible[facadeIndex];
         for(let lane=1;lane<=3;lane++){
-          if(hash(`${n.id}:${level}:${lane}`)<.24)continue;
-          const t=lane/4;const x=d.x+(c.x-d.x)*t,y2=d.y+(c.y-d.y)*t;
-          ctx.strokeStyle=rgba('#e8f5ff',.32+hash(`${level}:${lane}:${n.id}`)*.48);
-          ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(x,y2-2);ctx.lineTo(x,y2+1);ctx.stroke();
+          const side=-w+2*w*lane/4;
+          const a=point(side,.65),b=point(side,h-.35);
+          ctx.strokeStyle=rgba('#bcd9f1',.18);
+          ctx.lineWidth=.65;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+        }
+        for(let floor=1;floor<=floors;floor++){
+          const y=h*(floor/(floors+1));
+          const a=point(-w,y),b=point(w,y);
+          ctx.strokeStyle=rgba('#b5d8f3',.23);ctx.lineWidth=.6;
+          ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+          for(let lane=1;lane<=3;lane++){
+            if(hash(n.id+':'+facadeIndex+':'+floor+':'+lane)<.31)continue;
+            const side=-w+2*w*lane/4,start=point(side,y+.19),end=point(side,Math.min(h-.28,y+.79));
+            ctx.strokeStyle=rgba('#e0f2ff',.35+.40*hash(n.id+':light:'+floor+':'+lane));
+            ctx.lineWidth=clamp(roof.scale*.19,1,2.05);
+            ctx.beginPath();ctx.moveTo(start.x,start.y);ctx.lineTo(end.x,end.y);ctx.stroke();
+          }
         }
       }
       // Landmarks have unmistakable light beacons; selected nodes get a tall hologram.
@@ -616,16 +646,16 @@
       for(const h of candidates){
         const {node,roof,selected,hovered,dim}=h;if(dim&&!selected)continue;
         const label=node.name.length>19?node.name.slice(0,18)+'…':node.name;
-        ctx.font=selected?'bold 12px system-ui':'600 10px system-ui';
-        const width=clamp(ctx.measureText(label).width+24,52,184),x=roof.x-width/2,y=roof.y-(selected?34:27);
-        if(x<4||x+width>this.width-4||y<4||y+21>this.height)continue;
-        if(!selected&&!hovered&&placed.some(p=>x<p.x+p.w+4&&x+width>p.x-4&&y<p.y+21&&y+22>p.y))continue;
-        ctx.save();rounded(ctx,x,y,width,22,5);
+        ctx.font=selected?'bold 14px system-ui':'600 12px system-ui';
+        const width=clamp(ctx.measureText(label).width+28,67,210),x=roof.x-width/2,y=roof.y-(selected?39:32);
+        if(x<4||x+width>this.width-4||y<4||y+26>this.height)continue;
+        if(!selected&&!hovered&&placed.some(p=>x<p.x+p.w+4&&x+width>p.x-4&&y<p.y+26&&y+26>p.y))continue;
+        ctx.save();rounded(ctx,x,y,width,26,6);
         ctx.fillStyle=selected?'rgba(22,32,67,.97)':'rgba(8,16,36,.89)';ctx.fill();
         ctx.strokeStyle=rgba(node.color,selected?.95:.55);ctx.lineWidth=selected?1.25:1;ctx.stroke();
         ctx.fillStyle=selected?'#ffffff':'#d8e7ff';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText(label,roof.x,y+11);
-        if(selected){ctx.strokeStyle=rgba(node.color,.75);ctx.beginPath();ctx.moveTo(roof.x,y+22);ctx.lineTo(roof.x,roof.y-1);ctx.stroke();}
+        ctx.fillText(label,roof.x,y+13);
+        if(selected){ctx.strokeStyle=rgba(node.color,.75);ctx.beginPath();ctx.moveTo(roof.x,y+26);ctx.lineTo(roof.x,roof.y-1);ctx.stroke();}
         ctx.restore();placed.push({x,y,w:width});
       }
     }
@@ -649,7 +679,7 @@
         ctx.beginPath();ctx.arc(x,y,13.5,0,PI2);
         ctx.fillStyle=hasRef?'rgba(73,46,31,.97)':'rgba(17,39,65,.96)';ctx.fill();
         ctx.strokeStyle=hasRef?'#f3c58b':'#9cbed8';ctx.lineWidth=1.3;ctx.stroke();
-        ctx.shadowBlur=0;ctx.font='650 11px system-ui';ctx.fillStyle='#fff5e5';ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.shadowBlur=0;ctx.font='650 12px system-ui';ctx.fillStyle='#fff5e5';ctx.textAlign='center';ctx.textBaseline='middle';
         ctx.fillText(hasRef?String(count>9?'9+':count):'?',x,y+.5);ctx.restore();
         this.issueHitAreas.push({x,y,nodeId:hit.node.id,name:hit.node.name,
           referenced:match.referenced,suggested:match.suggested,observed:match.observed,count,hitRadius:26,depth:hit.depth});
@@ -665,24 +695,24 @@
         const anchor=this.project(d.center.x-d.halfWidth*.25,2,d.center.z-d.halfDepth*.15);
         const name=d.name.toUpperCase(),count=`${d.count} MODULE${d.count===1?'':'S'}`;
         const central=d.central;
-        ctx.save();ctx.font='650 11px system-ui';
-        const width=Math.min(215,Math.max(109,ctx.measureText(name).width+24));
+        ctx.save();ctx.font='650 12px system-ui';
+        const width=Math.min(235,Math.max(120,ctx.measureText(name).width+28));
         // Place plaque high enough to clear roofs, offset horizontally from island centre.
         const x=center.x+(central?Math.max(102,center.scale*8):(-d.center.x*.24)),
           y=center.y-(central?144:Math.min(106,71+center.scale*2.3));
         const clampedX=clamp(x-width*.5,7,this.width-width-7);
         const clampedY=clamp(y,98,this.height-55);
-        if(labels.some(p=>clampedX<p.x+p.w+5&&clampedX+width>p.x-5&&clampedY<p.y+38&&clampedY+38>p.y)){
+        if(labels.some(p=>clampedX<p.x+p.w+5&&clampedX+width>p.x-5&&clampedY<p.y+44&&clampedY+44>p.y)){
           ctx.restore();continue;
         }
         labels.push({x:clampedX,y:clampedY,w:width});
         ctx.strokeStyle=rgba('#bad5f1',.36);ctx.lineWidth=.85;
-        ctx.beginPath();ctx.moveTo(anchor.x,anchor.y-5);ctx.lineTo(clampedX+width*.5,clampedY+33);ctx.stroke();
-        ctx.fillStyle='rgba(7,23,45,.83)';rounded(ctx,clampedX,clampedY,width,39,5);ctx.fill();
+        ctx.beginPath();ctx.moveTo(anchor.x,anchor.y-5);ctx.lineTo(clampedX+width*.5,clampedY+38);ctx.stroke();
+        ctx.fillStyle='rgba(7,16,28,.94)';rounded(ctx,clampedX,clampedY,width,44,6);ctx.fill();
         ctx.strokeStyle=rgba(d.color,.54);ctx.lineWidth=.8;ctx.stroke();
-        ctx.fillStyle='#eaf4ff';ctx.font='650 11px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText(name,clampedX+width*.5,clampedY+14);
-        ctx.fillStyle='#90adc8';ctx.font='500 8px system-ui';ctx.fillText(count,clampedX+width*.5,clampedY+29);
+        ctx.fillStyle='#eaf4ff';ctx.font='650 12px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(name,clampedX+width*.5,clampedY+16);
+        ctx.fillStyle='#b3c9dd';ctx.font='500 10px system-ui';ctx.fillText(count,clampedX+width*.5,clampedY+33);
         ctx.restore();
       }
     }

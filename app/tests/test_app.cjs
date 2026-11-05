@@ -82,6 +82,10 @@ function makeApp({authenticated=true,active=true,assistantResult=null,multipleIs
   class Renderer{
     constructor(canvas,opts){renderer=this;this.onSelect=opts.onSelect;this.onIssueSelect=opts.onIssueSelect;this.selected=null;}
     setGraph(graph){this.graph=graph;}
+    getDistricts(){return [{kind:'frontend',name:'Frontend Boulevard',count:1},{kind:'api',name:'API Heights',count:1}];}
+    focusDistrict(kind){this.focusedDistrict=kind;return true;}
+    focusHotspot(){this.selected='api';this.mode='hotspots';return GRAPH.nodes[1];}
+    zoomToward(factor){this.zoomFactor=factor;}
     setIssueMarkers(data){this.issueMarkers=data;}
     setSelected(id){this.selected=id;}
     setMode(mode){this.mode=mode;}
@@ -501,4 +505,21 @@ test('successful Issue Radar avoids browser API and retains server-qualified iss
   assert.equal(ui.calls.filter(c=>typeof c.url==='string'&&c.url.startsWith('https://api.github.com/')).length,0);
   assert.equal(ui.renderer.issueMarkers.api.referenced[0],4);
   assert.doesNotMatch(ui.el('issueSummary').textContent,/BROWSER GITHUB FEED/);
+});
+
+test('temporary map controls focus districts, connected hubs and zoom, without new sidebar',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  assert.equal(ui.el('districtJump').children.length,3);
+  ui.el('mapCommandTrigger').listeners.click();ui.el('showMapOptions').listeners.click();
+  ui.el('districtJump').value='api';ui.el('districtJump').listeners.change();
+  assert.equal(ui.renderer.focusedDistrict,'api');
+  assert.equal(ui.el('mapTools').hidden,true);
+  ui.el('showMapOptions').listeners.click();
+  ui.el('zoomIn').listeners.click();assert.equal(ui.renderer.zoomFactor,.8);
+  ui.el('zoomOut').listeners.click();assert.equal(ui.renderer.zoomFactor,1.25);
+  ui.el('focusHub').listeners.click();
+  assert.equal(ui.renderer.selected,'api');
+  assert.equal(ui.renderer.mode,'hotspots');
+  assert.equal(ui.el('inspector').hidden,false);
+  assert.equal(ui.el('mapTools').hidden,true);
 });
