@@ -303,3 +303,10 @@
 .city-camera-controls>button{flex:1;text-align:left}
 .zoom-buttons{display:flex;gap:5px}.zoom-buttons button{width:42px;font-size:18px}
 @media(max-width:650px){.inspector,.tour-panel{width:calc(100vw - 28px);max-width:380px;padding:20px}.map-tools{width:calc(100vw - 28px);right:14px;max-height:min(75dvh,610px);overflow:auto}.guest-kicker{font-size:10px;letter-spacing:.055em}.world-status,.city-hint{font-size:10px}.map-command-trigger{font-size:12px}.issue-drawer .issue-ai-result{font-size:14px}.issue-drawer h2{font-size:24px}}
+
+/* v0.9.9 legibility pass for remaining small metadata and mobile copy. */
+.issue-number,.issue-label,.issue-place,.issue-detail-labels span,.issue-content-heading,.issue-insight-label,.issue-picker strong,.issue-github-link,.issue-placement small,.building-issue-action,.building-issues .issue-disclaimer,.assistant-disclosure,.assistant-meta,.impact-key,.module-metrics span,.inspector-caveat,.search-result small,.search-result .rank,.result-meta .rank,.insight-more summary,.insight-more p,.issue-original-report summary span,.issue-insight-sources a small{font-size:12px;line-height:1.5}
+.insight-disclosure,.observed-hint,.input-help{font-size:12px!important;line-height:1.55!important}
+.assistant-intro p,.issues-title p,.compass-intro{font-size:14px!important;line-height:1.65}
+.dialog-inner label,.tour-question label,.assistant-compose label,.tour-index,.inspector-district,.impact-kicker{font-size:12px;line-height:1.5}
+@media(max-width:650px){.issue-map-legend{font-size:10px}.city-hint{white-space:normal;text-align:center;max-width:52vw}.assistant-intro p,.issues-title p{font-size:13px!important}}
