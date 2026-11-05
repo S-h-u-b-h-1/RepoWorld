@@ -425,5 +425,9 @@ test('district focus shows only its own plaques and issue pins until Overview re
   assert.ok(renderer.issueHitAreas.every(p=>p.nodeId==='src/api'));
   renderer.resetCamera();renderer.render(3200);
   assert.equal(renderer.activeDistrict,null);
+  // At the fitted overview zoom, one-module districts are intentionally hidden
+  // to avoid plaque clutter. Zoom closer before asserting their restoration.
+  renderer.distance=110;renderer.targetDistance=110;
+  renderer.render(3400);
   assert.ok(renderer.districtHitAreas.some(p=>p.kind!=='api'));
 });
