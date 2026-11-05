@@ -39,6 +39,9 @@ On Render Free, when the server receives a GitHub API rate-limit response,
 RepoWorld can fetch a limited open-issue page directly in the visitor's browser
 using the public GitHub CORS API, without a visitor login or server secret.
 That feed is explicitly labeled not independently verified by the server.
-Browser-fed reported paths are only unverified suggestions; the app disables
-server-verified AI issue investigations for these records. Source-verified
-investigation requires authenticated GitHub server access.
+Browser-fed reported paths remain unverified suggestions. A visitor may explicitly
+request a separate, quota-limited lookup of actual public source files from the
+saved repository; this checks source bytes, NOT whether the browser-reported issue
+is real, open, correctly located, or independently reproduced. It never triggers
+BharatCode inference or upgrades issue markers. Server-verified AI issue
+investigation still requires authenticated GitHub issue access.

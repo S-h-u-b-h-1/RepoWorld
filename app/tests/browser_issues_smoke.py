@@ -13,7 +13,7 @@ sys.path.insert(0,str(ROOT))
 from playwright.async_api import async_playwright
 from app.demo import build_demo
 
-OUT=ROOT/'evidence'
+OUT=ROOT/'evidence'/'browser-qa'
 
 async def check(page,graph):
     errors=[]
@@ -45,6 +45,11 @@ async def check(page,graph):
         let response=key==='/api/session'?session:
            key==='/api/my-repos/demo'?{id:'demo',graph}:
            key==='/api/my-repos/demo/issues'?{error:'GitHub issue API rate limit reached.'}:
+           key==='/api/my-repos/demo/source-lead'?{mode:'source-lead',
+             issueVerified:false,assistantUsed:false,sourceFilesRead:1,sourceScope:'live-branch',
+             sources:[{file:'apps/web/src/app.tsx',evidence:'excerpt',
+               url:'https://github.com/pallets/flask/blob/HEAD/apps/web/src/app.tsx#L4-L9',
+               matchKind:'path-hint',matchedSymbols:[],preview:'4: export function startApp(){}'}]}:
            direct?[issue,{number:74,title:'A pull request',state:'open',pull_request:{url:'x'}}]:
            key==='/api/tour'?{mode:'guided',steps:[]}:{error:'Unexpected '+key};
         return new Response(JSON.stringify(response),{status:response.error?status===429?429:404:200,
@@ -66,6 +71,23 @@ async def check(page,graph):
     log=await page.evaluate('window.__API_LOG__')
     assert len([x for x in log if x['url'].startswith('https://api.github.com/')])==1
     assert not any(x['url']=='/api/my-repos/demo/assistant' for x in log)
+    assert not any(x['url']=='/api/my-repos/demo/source-lead' for x in log)
+    await page.locator('#issueInspectSource').click()
+    await page.wait_for_function("document.querySelector('#issueAiHeading')?.textContent?.includes('ISSUE UNVERIFIED')")
+    assert await page.locator('.source-lead-card > a').first.get_attribute('href')==(
+      'https://github.com/pallets/flask/blob/HEAD/apps/web/src/app.tsx#L4-L9')
+    await page.evaluate("""() => Object.defineProperty(navigator,'clipboard',{
+      configurable:true,value:{writeText:async text=>{window.__QA_NOTES__=text;}}
+    })""")
+    await page.locator('#issueCopyNotes').click()
+    await page.wait_for_function("typeof window.__QA_NOTES__==='string'")
+    notes=await page.evaluate('window.__QA_NOTES__')
+    assert 'public source independently inspected; issue not verified' in notes,notes
+    assert 'Separately fetched public source' in notes,notes
+    assert 'AI-generated suggestion' not in notes,notes
+    log=await page.evaluate('window.__API_LOG__')
+    assert len([x for x in log if x['url']=='/api/my-repos/demo/source-lead'])==1
+    assert not any(x['url']=='/api/my-repos/demo/assistant' for x in log)
     assert not errors,errors
     assert not await page.evaluate('document.documentElement.scrollWidth>window.innerWidth')
 
@@ -75,7 +97,7 @@ async def main():
                   'url':'https://github.com/pallets/flask','branch':'HEAD'})
     OUT.mkdir(exist_ok=True)
     async with async_playwright() as pw:
-        browser=await pw.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
+        browser=await pw.chromium.launch(headless=True,args=['--no-sandbox'])
         for w,h in [(1440,900),(390,844)]:
             page=await browser.new_page(viewport={'width':w,'height':h})
             await check(page,graph)

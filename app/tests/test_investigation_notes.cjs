@@ -60,3 +60,24 @@ test('rejects nonpublic, unusual or cross-origin repository and issue IDs',()=>{
   assert.throws(()=>run({graph,issue:{...issue,number:0}}),/open GitHub issue/);
   assert.throws(()=>run({graph:{...graph,source:'demo'},issue}),/public GitHub/);
 });
+test('independent public-source evidence can be copied without upgrading browser issue trust',()=>{
+  const run=formatter();
+  const notes=run({graph,issue,browserFallback:true,
+    guide:{mode:'source-lead',issueVerified:false,assistantUsed:false,
+      sourceFilesRead:1,sourceScope:'live-branch',
+      sources:[{file:'services/api/login.py',evidence:'excerpt',
+        url:'https://github.com/testowner/demo-city/blob/HEAD/services/api/login.py#L12-L30'}]}});
+  assert.match(notes,/issue #12/);
+  assert.match(notes,/separately, but the issue itself was not server-verified/);
+  assert.match(notes,/Separately fetched public source; issue not verified/);
+  assert.match(notes,/browser-only issue feed; public source independently inspected; issue not verified/);
+  assert.doesNotMatch(notes,/AI-generated suggestion/);
+});
+test('browser fallback refuses fabricated model source notes without source-lead provenance',()=>{
+  const run=formatter();
+  const notes=run({graph,issue,browserFallback:true,guide:{mode:'ai',sourceFilesRead:1,
+    sources:[{file:'services/api/login.py',evidence:'excerpt',
+      url:'https://github.com/testowner/demo-city/blob/HEAD/services/api/login.py'}]}});
+  assert.match(notes,/No fetched source excerpts were confirmed/);
+  assert.doesNotMatch(notes,/Separately fetched public source/);
+});

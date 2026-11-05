@@ -1,4 +1,4 @@
-# RepoWorld v0.9.11 — The City of Code
+# RepoWorld v0.9.12 — The City of Code
 
 **RepoWorld is a read-only, sign-in-free tool for exploring public GitHub repositories as interactive 3D cities.** Districts are groups of source files; buildings represent modules; illuminated links represent sampled **static imports**, not runtime traffic. Issue Radar displays GitHub's reported open issues as referenced, suggested, or unplaced locations. An optional BharatCode assistant helps developers investigate code and plan safe next steps.
 
@@ -29,6 +29,12 @@ The original near-black, floating-district perspective remains. Decorative block
 ### Issue Radar quick filters
 
 Within **Explore code → Open issues**, search the fetched issue sample by title, issue number or labels, or filter by bug, good-first-issue, enhancement, or location-hint categories. Filtering happens entirely in the browser with no extra GitHub requests. It does not search every issue in the repository, promote unverified paths to source observations, or change the map markers.
+
+## Independent source lookup for browser-only issue reports (v0.9.12)
+
+If GitHub limits the server's shared IP, Issue Radar can still display a **browser-fetched public issue feed**, explicitly marked unverified by RepoWorld's server. Open a reported issue and choose **Inspect public source** to *explicitly* look for matching identifiers or files in the saved public repository. The new CSRF-protected endpoint reads a bounded source sample through the existing public HEAD archive path on Render Free (or an authenticated GitHub tree when configured). It does not trust browser-provided URLs, independently establish that the issue exists/is still open, run code, invoke BharatCode, or place a new "verified issue" marker. Fetched source excerpts are real code evidence but **not proof the reported defect affects that file**. If a source is found, the existing **Copy investigation notes** button includes the links with this distinction; it never upgrades the browser issue feed to server-verified.
+
+This feature is on-demand only, with independent per-guest and global hourly source-lookup budgets (defaults: 2 per guest, 8 globally); provider throttling, large repositories and unavailable archives can still yield zero excerpts. No new permanent panels, user account, or paid infrastructure are required.
 
 ## Portable issue investigation notes (v0.9.11)
 

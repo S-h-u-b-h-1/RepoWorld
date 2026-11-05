@@ -30,7 +30,7 @@ class FakeElement{
   focus(){}
   closest(){return null;}
 }
-function makeApp({authenticated=true,active=true,assistantResult=null,multipleIssues=false,importFailure=null,issueFailure=null,issueFailureMessage=null,browserIssues=null,browserIssueError=null,deepLink='',storedLastRepo=null,storageThrows=false}={}){
+function makeApp({authenticated=true,active=true,assistantResult=null,multipleIssues=false,importFailure=null,issueFailure=null,issueFailureMessage=null,browserIssues=null,browserIssueError=null,sourceLeadResult=null,sourceLeadError=null,deepLink='',storedLastRepo=null,storageThrows=false}={}){
   const elements=new Map();
   const el=id=>{if(!elements.has(id))elements.set(id,new FakeElement(['importInput','aiQuestion','searchInput','assistantQuestion'].includes(id)?'input':'div'));return elements.get(id);};
   const layers=['structure','dependencies','flows','hotspots'].map(n=>Object.assign(new FakeElement('button'),{dataset:{layer:n}}));
@@ -65,6 +65,16 @@ function makeApp({authenticated=true,active=true,assistantResult=null,multipleIs
       const extras=multipleIssues?[{number:717,title:'Add logging for api requests',url:'https://github.com/testowner/demo-city/issues/717',labels:['feature'],body:'services/api/index.py requires logging',matches:[{nodeId:'api',confidence:'referenced',evidence:'Issue references services/api/index.py'}]},{number:789,title:'Handle short commit messages',url:'https://github.com/testowner/demo-city/issues/789',labels:['bug'],body:'services/api/index.py prefix exception',matches:[{nodeId:'api',confidence:'referenced',evidence:'Issue references services/api/index.py'}]},{number:821,title:'Improve module error handling',url:'https://github.com/testowner/demo-city/issues/821',labels:['enhancement'],body:'services/api/index.py',matches:[{nodeId:'api',confidence:'referenced',evidence:'Issue references services/api/index.py'}]}]:[];
       body={total:2+extras.length,placed:1+extras.length,unplaced:1,partial:false,scope:'Mock public issues',issues:[baseIssue,...extras,unplaced],byNode:{api:{referenced:[4,...extras.map(e=>e.number)],suggested:[]}}};
       }
+    }
+    else if(url==='/api/my-repos/demo/source-lead'&&opts.method==='POST'){
+      if(sourceLeadError){code=sourceLeadError;body={error:'Source lookup limit reached'};}
+      else body=sourceLeadResult||{mode:'source-lead',issueVerified:false,assistantUsed:false,
+        sourceFilesRead:1,sourceScope:'live-branch',
+        sources:[{file:'services/api/index.py',evidence:'excerpt',
+          url:'https://github.com/testowner/demo-city/blob/HEAD/services/api/index.py#L3-L8',
+          matchKind:'symbol',matchedSymbols:['handleLogin'],
+          preview:'3: def handleLogin(): pass'}],
+        disclosure:'Browser issue remains unverified; source fetched separately.'};
     }
     else if(url==='/api/my-repos/demo/assistant'&&opts.method==='POST')body=assistantResult||{mode:'navigation',answer:'Start with API.',steps:['Read source'],nodeIds:['api'],sources:[{file:'services/api/index.py',url:'https://github.com/testowner/demo-city/blob/main/services/api/index.py'}],disclosure:'Navigation only'};
     else if(url==='/api/my-repos/demo/find?q=Where%20is%20login%20handled%3F')body={query:'Where is login handled?',results:[{nodeId:'api',name:'API',path:'services/api',kind:'api',files:['services/api/index.py']}],scope:'Path-based matches.'};
@@ -619,4 +629,64 @@ test('browser fallback notes remain explicitly unverified and never invoke serve
   assert.match(ui.copied[0],/browser-only issue feed; source unverified/);
   assert.doesNotMatch(ui.copied[0],/AI-generated suggestion/);
   assert.equal(ui.calls.filter(x=>x.url.includes('/assistant')).length,0);
+});
+
+test('browser-only issue allows explicit public source lookup without claiming issue verification',async()=>{
+  const feed=[{number:774,state:'open',title:'Disable cycling to stream and recipients while editing',
+    body:'It is not possible to edit stream name for stream messages.',labels:[]}];
+  const ui=makeApp({active:true,issueFailure:429,browserIssues:feed});await ui.boot();
+  for(let i=0;i<5;i++)await new Promise(resolve=>setImmediate(resolve));
+  ui.el('mapCommandTrigger').listeners.click();ui.compassTabs[1].listeners.click();
+  ui.el('issueList').children[0].children[0].children[0].listeners.click();
+  assert.equal(ui.el('issueInspectSource').hidden,false);
+  assert.equal(ui.calls.filter(x=>x.url.endsWith('/source-lead')).length,0);
+  assert.match(ui.el('issueAiResult').textContent,/not.*verified/i);
+  await ui.el('issueInspectSource').listeners.click();
+  const lookups=ui.calls.filter(x=>x.url.endsWith('/source-lead'));
+  assert.equal(lookups.length,1);
+  assert.equal(lookups[0].opts.method,'POST');
+  assert.match(JSON.parse(lookups[0].opts.body).title,/Disable cycling/);
+  assert.match(ui.el('issueAiHeading').textContent,/ISSUE UNVERIFIED/);
+  assert.equal(ui.el('issueNotesResult')?.textContent||'', '');
+  assert.equal(ui.calls.filter(x=>x.url.endsWith('/assistant')).length,0);
+  assert.ok(!ui.renderer.issueMarkers.api?.observed?.length);
+  const section=ui.el('issueAiResult').children.find(c=>c.className==='insight-section');
+  assert.ok(section);
+  const source=section.children.find(c=>c.className==='source-lead-card');
+  assert.ok(source);
+  assert.equal(source.children[0].href,'https://github.com/testowner/demo-city/blob/HEAD/services/api/index.py#L3-L8');
+  await ui.el('issueCopyNotes').listeners.click();
+  assert.match(ui.copied[0],/browser-only issue feed; public source independently inspected; issue not verified/);
+  assert.match(ui.copied[0],/Separately fetched public source; issue not verified/);
+  assert.doesNotMatch(ui.copied[0],/AI-generated suggestion/);
+});
+test('browser issue source lookup handles no evidence and provider quota safely',async()=>{
+  const feed=[{number:774,state:'open',title:'Disable cycling to recipients',
+    body:'Edit message action',labels:[]}];
+  const ui=makeApp({active:true,issueFailure:429,browserIssues:feed,
+    sourceLeadResult:{mode:'source-lead',issueVerified:false,assistantUsed:false,
+      sourceFilesRead:0,sourceScope:'unavailable',sources:[]}});
+  await ui.boot();for(let i=0;i<5;i++)await new Promise(resolve=>setImmediate(resolve));
+  ui.el('mapCommandTrigger').listeners.click();ui.compassTabs[1].listeners.click();
+  ui.el('issueList').children[0].children[0].children[0].listeners.click();
+  await ui.el('issueInspectSource').listeners.click();
+  assert.match(ui.el('issueAiResult').children.map(x=>x.textContent||'').join(' '),
+    /No public source excerpts were found/);
+  await ui.el('issueCopyNotes').listeners.click();
+  assert.match(ui.copied[0],/No fetched source excerpts were confirmed/);
+  const quota=makeApp({active:true,issueFailure:429,browserIssues:feed,sourceLeadError:429});
+  await quota.boot();for(let i=0;i<5;i++)await new Promise(resolve=>setImmediate(resolve));
+  quota.el('mapCommandTrigger').listeners.click();quota.compassTabs[1].listeners.click();
+  quota.el('issueList').children[0].children[0].children[0].listeners.click();
+  await quota.el('issueInspectSource').listeners.click();
+  assert.match(quota.el('issueAiHeading').textContent,/UNAVAILABLE/);
+  assert.equal(quota.el('issueInspectSource').disabled,false);
+  assert.equal(quota.calls.filter(x=>x.url.endsWith('/assistant')).length,0);
+});
+test('server-confirmed issues hide independent browser-only source lookup',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  ui.renderer.onIssueSelect('api');
+  for(let i=0;i<5;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ui.el('issueInspectSource').hidden,true);
+  assert.equal(ui.calls.filter(x=>x.url.endsWith('/source-lead')).length,0);
 });
