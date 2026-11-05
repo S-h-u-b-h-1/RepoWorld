@@ -1,4 +1,4 @@
-# RepoWorld v0.9.14 — The City of Code
+# RepoWorld v0.9.15 — The City of Code
 
 **RepoWorld is a read-only, sign-in-free tool for exploring public GitHub repositories as interactive 3D cities.** Districts are groups of source files; buildings represent modules; illuminated links represent sampled **static imports**, not runtime traffic. Issue Radar displays GitHub's reported open issues as referenced, suggested, or unplaced locations. An optional BharatCode assistant helps developers investigate code and plan safe next steps.
 
@@ -29,6 +29,12 @@ The original near-black, floating-district perspective remains. Decorative block
 ### Issue Radar quick filters
 
 Within **Explore code → Open issues**, search the fetched issue sample by title, issue number or labels, or filter by bug, good-first-issue, enhancement, or location-hint categories. Filtering happens entirely in the browser with no extra GitHub requests. It does not search every issue in the repository, promote unverified paths to source observations, or change the map markers.
+
+## Portable offline city files (v0.9.15)
+
+To move a public city map between browsers without relying on Render's temporary SQLite storage, first **Save city for offline viewing** in the existing repository menu. Then choose **Download portable city file** to save a `repoworld-owner-repo.json` backup to your device. On another browser/device, choose **Restore city from file** in the repository menu or the empty welcome screen. Restoring validates a versioned file format and the same strict public-GitHub URL, path, edge and module bounds as the existing local backup, then saves *one* sanitized map in the new browser's local storage and opens it as an explicitly **offline preview**.
+
+This is a **manual file transfer**, not cloud sync or a persistent server database. Files are read locally by the browser; they are not uploaded to the RepoWorld API. Export/import do not call GitHub, BharatCode or any server endpoint. The file contains only whitelisted public map metadata (bounded modules, sampled filenames, short declarations and static import edges) without cookies, CSRF tokens, private credentials, issue reports or AI answers. Reject malformed files, unexpected formats, non-GitHub origins, unsafe paths and oversized payloads before changing any stored map. The file is not proof the current repository or issue state is unchanged. Re-import explicitly to restore live tools.
 
 ## Opt-in local city map backup (v0.9.14)
 

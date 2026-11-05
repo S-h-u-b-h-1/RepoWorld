@@ -79,3 +79,43 @@ test('corrupted or malicious stored data does not load',()=>{
   assert.equal(u.read({getItem(){throw Error('blocked');}}),null);
   assert.throws(()=>u.save(graph(),{setItem(){throw Error('full');}}),/full or blocked/);
 });
+
+test('portable public city file roundtrips into a new browser with no server data',()=>{
+  const u=util(),first=storage(),second=storage(),g=graph();
+  g.cookie='never-copy-me';g.nodes[0].answer='model-output-no';
+  u.save(g,first);
+  const text=u.exportText(first);
+  assert.match(text,/"format":"repoworld-public-city-v1"/);
+  assert.doesNotMatch(text,/never-copy-me|model-output-no/);
+  const output=u.importText(text);
+  assert.equal(output.graph.url,'https://github.com/zulip/zulip-terminal');
+  const transferred=u.restoreText(text,second);
+  assert.equal(transferred.graph.nodes[0].id,'zulipterminal/ui_tools');
+  assert.equal(u.read(second).graph.nodes[0].files[1],'zulipterminal/ui_tools/messages.py');
+  assert.equal(u.fileName(transferred.graph),'repoworld-zulip-zulip-terminal.json');
+  assert.deepEqual(Array.from(first.map.keys()),Array.from(second.map.keys()));
+});
+test('file restore rejects malformed, forged, oversized and misleading snapshots',()=>{
+  const u=util(),s=storage();
+  u.save(graph(),s);const valid=u.exportText(s);
+  for(const candidate of [
+    '{bad-json',
+    JSON.stringify({version:1,graph:graph()}),
+    JSON.stringify({...JSON.parse(valid),format:'some-other-application'}),
+    JSON.stringify({...JSON.parse(valid),graph:{...graph(),url:'https://github.com.evil.tld/a/b'}}),
+    JSON.stringify({...JSON.parse(valid),graph:{...graph(),source:'demo'}}),
+    JSON.stringify({...JSON.parse(valid),graph:{...graph(),nodes:[{...graph().nodes[0],files:['../../.env']}]}}),
+    'x'.repeat(u.maxFileChars+1),
+  ]){
+    assert.throws(()=>u.importText(candidate),/not valid|not a supported|Invalid|oversized|public|invalid/i);
+  }
+  assert.equal(u.read(s).graph.name,'zulip-terminal');
+});
+test('file restore enforces local storage size and never overwrites on parse failure',()=>{
+  const u=util(),s=storage();u.save(graph(),s);
+  const before=s.map.get('repoworld:offline-city:v1');
+  const json=u.exportText(s);
+  assert.throws(()=>u.restoreText('bad',s),/Invalid/);
+  assert.equal(s.map.get('repoworld:offline-city:v1'),before);
+  assert.throws(()=>u.restoreText(json,{setItem(){throw Error('denied');}}),/full or blocked/);
+});

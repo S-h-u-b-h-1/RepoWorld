@@ -12,6 +12,10 @@ An explicit local offline map backup can preserve a bounded, sanitized public
 module/filename graph in the visitor's own browser. It cannot make live AI,
 GitHub issues or other server endpoints work after the free instance loses
 its guest SQLite workspace; returning to live tools requires a confirmed re-import.
+A public city can also be downloaded as a versioned, sanitized browser-local
+JSON file and manually restored on another device without uploading it to
+RepoWorld. A restored file is unverified offline metadata, never an authenticated
+server snapshot, current GitHub state or working live AI source.
 New visitors must confirm a GitHub import before any external repository fetch.
 
 Issue Radar retrieves reported open GitHub issues, excludes pull requests, and

@@ -77,8 +77,52 @@
       return {savedAt:parsed.savedAt,graph:extract(parsed.graph)};
     }catch{return null;}
   }
+  // A portable JSON file is a manually transferred *offline public map*,
+  // never a trusted server snapshot or a way to resurrect an old guest cookie.
+  const FILE_FORMAT='repoworld-public-city-v1';
+  function fileRecord(graph, savedAt=Date.now()){
+    const safe=extract(graph);
+    const value={format:FILE_FORMAT,version:1,
+      savedAt:Number.isFinite(savedAt)&&savedAt>0?savedAt:Date.now(),graph:safe};
+    const json=JSON.stringify(value);
+    if(json.length>MAX_JSON_CHARS)throw Error('Public city file exceeds the size limit.');
+    return {value,json};
+  }
+  function exportText(storage){
+    const snapshot=read(storage);
+    if(!snapshot)throw Error('Save a public city in this browser before downloading it.');
+    // Re-sanitize rather than trusting localStorage contents, and never include
+    // guest IDs, session cookies, CSRF tokens, model answers, or issue reports.
+    return fileRecord(snapshot.graph,snapshot.savedAt).json;
+  }
+  function importText(input){
+    if(typeof input!=='string'||input.length<20||input.length>MAX_JSON_CHARS)
+      throw Error('Invalid or oversized RepoWorld public-city file.');
+    let parsed;
+    try{parsed=JSON.parse(input);}catch{throw Error('The city file is not valid JSON.');}
+    if(!parsed||parsed.format!==FILE_FORMAT||parsed.version!==1||
+       !Number.isFinite(parsed.savedAt)||parsed.savedAt<=0)
+      throw Error('This is not a supported RepoWorld public-city file.');
+    const record=fileRecord(parsed.graph,parsed.savedAt).value;
+    return {savedAt:record.savedAt,graph:record.graph};
+  }
+  function restoreText(input,storage){
+    const backup=importText(input);
+    if(!storage?.setItem)throw Error('Browser storage is unavailable.');
+    const safe=JSON.stringify({version:1,savedAt:backup.savedAt,graph:backup.graph});
+    if(safe.length>MAX_JSON_CHARS)throw Error('This city is too large for browser storage.');
+    try{storage.setItem(KEY,safe);}
+    catch{throw Error('Browser storage is full or blocked; the city was not restored.');}
+    return backup;
+  }
+  function fileName(graph){
+    const safe=extract(graph);
+    const repo=new URL(safe.url).pathname.split('/').filter(Boolean);
+    return 'repoworld-'+repo.join('-').replace(/[^a-zA-Z0-9_.-]/g,'-')+'.json';
+  }
   function clear(storage){
     try{storage?.removeItem?.(KEY);return true;}catch{return false;}
   }
-  window.RepoWorldOfflineCity={save,read,clear};
+  window.RepoWorldOfflineCity={save,read,clear,exportText,importText,restoreText,fileName,
+    maxFileChars:MAX_JSON_CHARS,maxFileBytes:5_000_000};
 })();

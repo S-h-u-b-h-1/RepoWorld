@@ -1,4 +1,4 @@
-"""RepoWorld v0.9.14: city, anonymous sharing, and public-launch safeguards."""
+"""RepoWorld v0.9.15: city, anonymous sharing, and public-launch safeguards."""
 from __future__ import annotations
 
 from collections import defaultdict, deque
@@ -24,7 +24,7 @@ from .quotas import reserve_ai, reserve_import, reserve_refresh, reserve_source_
 from .request_limits import RequestBodyLimit
 
 APP_ROOT = Path(__file__).resolve().parent
-app = FastAPI(title="RepoWorld", description="Explore a repository as a living city", version="0.9.14", docs_url="/api/docs", redoc_url=None)
+app = FastAPI(title="RepoWorld", description="Explore a repository as a living city", version="0.9.15", docs_url="/api/docs", redoc_url=None)
 app.add_middleware(RequestBodyLimit)
 logger = logging.getLogger("repoworld.import")
 app.mount("/static", StaticFiles(directory=str(APP_ROOT / "static")), name="static")
@@ -118,7 +118,7 @@ async def home():
 @app.get("/api/health")
 async def health():
     """Liveness probe; does not imply the production setup is safe."""
-    return {"ok": True, "product": "RepoWorld", "version": "0.9.14"}
+    return {"ok": True, "product": "RepoWorld", "version": "0.9.15"}
 
 
 @app.get("/api/ready")

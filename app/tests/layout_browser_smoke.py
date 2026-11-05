@@ -216,6 +216,30 @@ async def verify(browser,width,height):
     assert "OFFLINE BROWSER MAP" in await page.locator("#searchScope").inner_text()
     assert await page.evaluate("window.__CALLS__.length")==calls_before_offline
     await page.screenshot(path=str(OUT/f"offline-city-{width}.png"),full_page=True)
+    # Portable JSON handoff: browser download + user-chosen file restoration.
+    # The screenshot fixture remains entirely offline with mocked app routes.
+    await page.locator('#closeSearch').click()
+    await page.locator('#repoMenuButton').click()
+    async with page.expect_download(timeout=10000) as download_info:
+      await page.locator('#downloadOfflineCity').click()
+    download=await download_info.value
+    assert download.suggested_filename=='repoworld-pallets-flask.json'
+    archive_path=await download.path()
+    portable=json.loads(Path(archive_path).read_text(encoding='utf-8'))
+    assert portable['format']=='repoworld-public-city-v1'
+    assert portable['graph']['source']=='github'
+    assert len(portable['graph']['nodes'])==72
+    assert 'csrf' not in str(portable).lower()
+    assert 'token_hash' not in str(portable).lower()
+    await page.locator('#repoMenuButton').click()
+    await page.locator('#clearOfflineCity').click()
+    assert await page.locator('#emptyState').is_visible()
+    count_before_restore=await page.evaluate("window.__CALLS__.length")
+    await page.locator('#offlineCityFile').set_input_files(str(archive_path))
+    await page.wait_for_function("document.querySelector('#cityStatusText')?.textContent?.includes('LOCAL OFFLINE PREVIEW')")
+    assert await page.evaluate("window.__CALLS__.length")==count_before_restore
+    assert await page.evaluate("window.localStorage.getItem('repoworld:offline-city:v1')!==null")
+    await page.screenshot(path=str(OUT/f"portable-city-restored-{width}.png"),full_page=True)
     assert not errors,errors
     assert not await page.evaluate("document.documentElement.scrollWidth>innerWidth")
     print(f"PASS {width}x{height}: {metrics}; browser errors={errors}")
