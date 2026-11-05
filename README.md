@@ -144,6 +144,12 @@ python scripts/check_production.py
 
 The production configuration preflight intentionally returns a nonzero status on a local development environment. Focused Chromium checks require Playwright and an installed Chromium executable. The import-recovery regressions and OpenWISP #717 regression use **mocked GitHub API responses**, not a live provider completion.
 
+## GitHub API quota behavior on free hosting
+
+Render's shared outbound IP may already be near GitHub's unauthenticated 60-requests/hour allowance; waiting for a cooldown cannot guarantee the next visitor will have quota. A short-lived read-only GitHub personal access token can be set privately as `GITHUB_TOKEN` in the Render Environment settings to obtain the higher authenticated GitHub API budget. Never commit or display this token, and prefer minimum permissions and expiry.
+
+When no token exists, the explicit free demo configuration inspects at most **two** source blobs per import (plus GitHub metadata/tree), preserving the map while reducing API pressure. A real import may still return HTTP 429 when the shared public quota is depleted. In that case the import dialog offers **Explore a fictional demo city (offline)**: it loads an explicitly labeled fictional graph from RepoWorld itself, **not** a live GitHub repository, and does not contact GitHub or claim the issue data is real.
+
 ## Free public hosting (ephemeral hackathon preview)
 
 `render.yaml` now requests a **Render Free Python service** in Singapore, with one web worker and **no persistent disk or paid services**. This is explicitly a temporary hackathon preview. It uses an SQLite file at `/tmp/repoworld.sqlite3` and `REPOWORLD_EPHEMERAL_DEMO=1`. The preview works during an active browser session, but **all saved cities, guest sessions and usage quotas can disappear** when Render spins down after 15 minutes idle, restarts or redeploys. Returning visitors might need to import the public repository again. There is no cross-browser account synchronization.

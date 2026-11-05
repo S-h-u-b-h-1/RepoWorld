@@ -1,3 +1,11 @@
+## GitHub shared-IP rate-limit mitigation (free hosting hotfix)
+
+- A Render Free service can exhaust GitHub's public IP-based API limit even with a healthy website. This does not indicate an invalid repository.
+- For the explicit free-demo setting only, anonymous imports sample 2 source blobs rather than 6, reducing optional API calls; authenticated imports retain the full sample.
+- If GitHub returns HTTP 429, the import modal offers an explicitly fictional local demo city. The fictional city does not call GitHub and is visibly labeled `DEMO CITY`. It must not be presented as a genuine repo import.
+- **Still required for reliable live imports:** a private server-side `GITHUB_TOKEN` with minimal read permissions and limited expiry. This is free but requires account-owner setup. Do not publish the token or treat extra quota as unlimited.
+- The free Render service, guest sessions, production security policy and 3D appearance are unchanged.
+
 ## Free Render hosting profile (post-v0.9.6 publication)
 
 - Retained all v0.9.6 application UI and behavior.

@@ -126,7 +126,12 @@ async def _json(client: httpx.AsyncClient, url: str, headers: dict) -> dict:
 
 
 def _source_limit(token_present: bool) -> int:
-    default = DEFAULT_AUTHENTICATED_SOURCE_LIMIT if token_present else DEFAULT_PUBLIC_SOURCE_LIMIT
+    # The free Render demo shares a small unauthenticated GitHub IP budget.
+    # Sample fewer optional blobs there; leave token-backed and local imports
+    # unchanged, and allow an explicit config override when needed.
+    default = (DEFAULT_AUTHENTICATED_SOURCE_LIMIT if token_present else
+               2 if os.getenv("REPOWORLD_EPHEMERAL_DEMO") == "1" else
+               DEFAULT_PUBLIC_SOURCE_LIMIT)
     raw = os.getenv("REPOWORLD_IMPORT_SOURCE_LIMIT", "").strip()
     try:
         requested = int(raw) if raw else default

@@ -277,3 +277,6 @@
 .observed-source-location:hover,.observed-source-location:focus-visible{border-color:#838994;background:#2b2e34;outline-offset:2px}
 .observed-source-location strong{font-size:11px;font-weight:590;overflow-wrap:anywhere}
 .observed-source-location small{font-size:10px;color:#aeb8c2}
+
+#importDemo{width:100%;margin-top:10px;border:1px solid #7299c05c;background:rgba(14,37,63,.7);color:#d5e6f7;padding:11px 12px;font-size:11px;border-radius:9px;text-align:center}
+#importDemo:hover{border-color:#a8caeb;background:rgba(30,64,93,.85)}

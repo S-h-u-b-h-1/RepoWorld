@@ -41,7 +41,9 @@
       const cooldown=Number(response.headers?.get?.('Retry-After'));
       const hint=response.status===429&&Number.isFinite(cooldown)&&cooldown>0
         ? ` Try again in about ${Math.ceil(cooldown/60)} minute${cooldown>60?'s':''}.` : '';
-      throw Error(String(detail)+hint);
+      const error=new Error(String(detail)+hint);
+      error.status=response.status;
+      throw error;
     }
     return body;
   }
@@ -49,7 +51,7 @@
   function showView(){ $('loadingView').hidden=true; $('workspace').hidden=false; }
   function closePopovers(){ $('repoMenu').hidden=true; $('repoMenuButton').setAttribute('aria-expanded','false'); }
   function toggleMenu(id,button){const target=!$(id).hidden;closePopovers();$(id).hidden=target;$(button).setAttribute('aria-expanded',String(!target));}
-  function startImport(){closePopovers();setText('importError','');$('importError').hidden=true;$('importInput').value='';
+  function startImport(){closePopovers();setText('importError','');$('importError').hidden=true;$('importDemo').hidden=true;$('importInput').value='';
     $('addRepoDialog').showModal();setTimeout(()=>$('importInput').focus(),50);}
   function hideImport(){if(!state.busy)$('addRepoDialog').close();}
   function showEmpty(){
@@ -122,7 +124,7 @@
     if(state.busy)return;
     const raw=esc(value).trim();if(!raw)return;
     state.busy=true;$('importButton').disabled=true;$('importButton').textContent='Constructing your city…';
-    $('importError').hidden=true;
+    $('importError').hidden=true;$('importDemo').hidden=true;
     // Indicate a slow request without adding more permanent interface elements.
     const progressTimer=setTimeout(()=>{
       if(state.busy)$('importButton').textContent='Reading GitHub…';
@@ -132,8 +134,25 @@
       await refreshSession();state.activeId=result.id;
       $('addRepoDialog').close();await useGraph(result.graph);
       toast(`${result.graph.name} is ready. Drag the city to explore.`);
-    }catch(e){setText('importError',e.message);$('importError').hidden=false;}
+    }catch(e){setText('importError',e.message);$('importError').hidden=false;
+      // A truthful, API-free exploration option when GitHub is throttling us.
+      // This fixture is fictional and must never appear to be a real import.
+      $('importDemo').hidden=e.status!==429;
+    }
     finally{clearTimeout(progressTimer);state.busy=false;$('importButton').disabled=false;$('importButton').textContent='Create my city ↗';}
+  }
+  async function openFictionalDemo(){
+    if(state.busy)return;
+    state.busy=true;$('importDemo').disabled=true;
+    try{
+      const graph=await api('/api/demo');
+      if(graph?.source!=='demo')throw Error('The server did not return a fictional demonstration city.');
+      state.activeId=null;
+      $('addRepoDialog').close();
+      await useGraph(graph);
+      toast('Fictional demo city loaded. No GitHub repository was imported.');
+    }catch(e){setText('importError',e.message);$('importError').hidden=false;}
+    finally{state.busy=false;$('importDemo').disabled=false;}
   }
   async function copyCityLink(){
     if(state.graph?.source!=='github')return;
@@ -704,6 +723,7 @@
     $('copyCityLink').addEventListener('click',copyCityLink);
     $('closeImport').addEventListener('click',hideImport);
     $('importForm').addEventListener('submit',e=>{e.preventDefault();importRepository($('importInput').value);});
+    $('importDemo').addEventListener('click',openFictionalDemo);
     $('addRepoDialog').addEventListener('cancel',e=>{if(state.busy)e.preventDefault();});
     $('mapCommandTrigger').addEventListener('click',()=>{setAssistantContext(null,null);openFind();});
     document.querySelectorAll('[data-compass-tab]').forEach(b=>b.addEventListener('click',()=>setCompassTab(b.dataset.compassTab)));

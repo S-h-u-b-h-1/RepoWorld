@@ -50,6 +50,7 @@ function makeApp({authenticated=true,active=true,assistantResult=null,multipleIs
     calls.push({url,opts});let body=null,code=200;
     if(url==='/api/session')body=session();
     else if(url==='/api/my-repos/demo')body={id:'demo',graph:GRAPH};
+    else if(url==='/api/demo')body={...GRAPH,source:'demo',url:'',owner:'Repoworld Studio',name:'Orbit Commerce',warnings:['Fictional demonstration only.']};
     else if(url==='/api/my-repos/demo/issues'){
       const baseIssue={number:4,title:'Fix login in services/api/index.py',url:'https://github.com/testowner/demo-city/issues/4',labels:['bug'],body:'services/api/index.py\nLogin fails on expired sessions.',matches:[{nodeId:'api',confidence:'referenced',evidence:'Issue references services/api/index.py'}]};
       const unplaced={number:5,title:'Documentation',url:'https://github.com/testowner/demo-city/issues/5',labels:[],matches:[]};
@@ -156,6 +157,26 @@ test('a GitHub rate limit is shown in the import modal with a retry time',async(
   assert.match(ui.el('importError').textContent,/GitHub API rate limit reached/);
   assert.match(ui.el('importError').textContent,/2 minutes/);
   assert.equal(ui.el('importButton').disabled,false);
+});
+test('GitHub rate limit exposes an explicitly fictional, API-free city preview',async()=>{
+  const ui=makeApp({active:false,importFailure:{status:429,message:'GitHub API rate limit reached.',retryAfter:'840'}});
+  await ui.boot();
+  ui.el('emptyAddRepo').listeners.click();
+  assert.equal(ui.el('importDemo').hidden,true);
+  ui.el('importInput').value='pallets/flask';
+  await ui.el('importForm').listeners.submit({preventDefault(){}});
+  for(let i=0;i<6;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ui.el('importDemo').hidden,false);
+  const githubCalls=ui.calls.filter(c=>c.url==='/api/my-repos').length;
+  await ui.el('importDemo').listeners.click();
+  for(let i=0;i<6;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ui.el('importDemo').disabled,false);
+  assert.equal(ui.el('addRepoDialog').open,false);
+  assert.equal(ui.el('cityStatusText').textContent,'DEMO CITY');
+  assert.equal(ui.el('activeRepoTitle').textContent,'Orbit Commerce');
+  assert.equal(ui.el('canvasStage').hidden,false);
+  assert.equal(ui.calls.filter(c=>c.url==='/api/my-repos').length,githubCalls);
+  assert.ok(ui.calls.some(c=>c.url==='/api/demo'));
 });
 test('one subtle city command opens grounded code compass with selectable result',async()=>{
   const ui=makeApp({active:true});await ui.boot();

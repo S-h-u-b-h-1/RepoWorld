@@ -168,3 +168,15 @@ def test_large_tree_sampling_can_cover_multiple_districts():
     sample=github._source_sample(_tree(48)['tree'],6)
     assert len(sample)==6
     assert len({github.group_for_file(entry['path']) for entry in sample})==6
+
+
+def test_free_demo_reduces_unauthenticated_sample_pressure_without_changing_token_default(monkeypatch):
+    monkeypatch.setenv('REPOWORLD_EPHEMERAL_DEMO','1')
+    monkeypatch.delenv('REPOWORLD_IMPORT_SOURCE_LIMIT',raising=False)
+    assert github._source_limit(False)==2
+    assert github._source_limit(True)==github.DEFAULT_AUTHENTICATED_SOURCE_LIMIT
+    monkeypatch.setenv('REPOWORLD_IMPORT_SOURCE_LIMIT','4')
+    assert github._source_limit(False)==4
+    monkeypatch.delenv('REPOWORLD_EPHEMERAL_DEMO',raising=False)
+    monkeypatch.delenv('REPOWORLD_IMPORT_SOURCE_LIMIT',raising=False)
+    assert github._source_limit(False)==github.DEFAULT_PUBLIC_SOURCE_LIMIT
