@@ -560,7 +560,7 @@
       state.chatHistory.push({role:'user',content:question},{role:'assistant',content:result.answer||''});
       state.chatHistory=state.chatHistory.slice(-6);
     }catch(e){answer.replaceChildren();const p=document.createElement('p');p.textContent=e.message;answer.append(p);}
-    finally{state.chatBusy=false;$('assistantSend').disabled=false;setText('assistantSend','Send ↗');}
+    finally{state.chatBusy=false;$('assistantSend').disabled=false;setText('assistantSend','Send');}
   }
   function hideIssueDrawer(){
     $('issueDrawer').hidden=true;state.issueOpenNode=null;state.issueSelectedNumber=null;
@@ -974,7 +974,7 @@
     if(issue.labels?.length){const tags=document.createElement('div');tags.className='issue-places';
       for(const label of issue.labels.slice(0,4)){const tag=document.createElement('span');tag.className='issue-label';tag.textContent=label;tags.append(tag);}row.append(tags);}
     const places=document.createElement('div');places.className='issue-places';
-    if(!issue.matches?.length){const plain=document.createElement('span');plain.className='issue-plain';plain.textContent='No defensible building match';places.append(plain);}
+    if(!issue.matches?.length){const plain=document.createElement('span');plain.className='issue-plain';plain.textContent='No source-supported building match';places.append(plain);}
     for(const match of (issue.matches||[]).slice(0,4)){
       const button=document.createElement('button');button.type='button';button.className='issue-place '+(match.confidence==='suggested'?'suggested':'');
       button.textContent=issuePlacementName(match);button.title=match.evidence||'';
@@ -1005,8 +1005,8 @@
       return [issue.title,issue.number,issue.snippet,...labels].some(value=>String(value||'').toLowerCase().includes(query));
     });
     const filtered=Boolean(query)||kind!=='all';
-    const prefix=info.browserFallback?'BROWSER GITHUB FEED · UNVERIFIED BY SERVER · ':'';
-    const sampleScope=`${info.total} open issues sampled · ${info.placed} placed · ${info.unplaced} unplaced${info.partial?' · Partial listing':''}`;
+    const prefix=info.browserFallback?'GitHub browser feed (not server-verified) · ':'';
+    const sampleScope=`${info.total} open issues sampled · ${info.placed} location hint${info.placed===1?'':'s'} · ${info.unplaced} unplaced${info.partial?' · Partial listing':''}`;
     setText('issueSummary',prefix+(filtered?`${visible.length} of ${info.total} sampled issues match · `:'' )+sampleScope);
     for(const item of visible)area.append(issueItem(item));
     if(!area.children.length){const p=document.createElement('p');p.className='issue-plain';p.textContent=filtered?'No sampled issues match these filters. Try another term or category.':'No open GitHub issues found in this sample.';area.append(p);}

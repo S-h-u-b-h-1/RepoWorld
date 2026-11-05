@@ -170,20 +170,20 @@
 
   <dialog id="searchDialog" class="dialog-shell search-dialog">
     <form id="searchForm" class="dialog-inner">
-      <div class="modal-topline"><span>REPOWORLD <span class="modal-num">/ DEVELOPER CONSOLE</span></span><button type="button" id="closeSearch" class="close-icon" aria-label="Close search">×</button></div>
+      <div class="modal-topline"><span>RepoWorld <span class="modal-num">/ Developer console</span></span><button type="button" id="closeSearch" class="close-icon" aria-label="Close developer console">×</button></div>
       <div class="compass-tabs" role="group" aria-label="Explore code tools">
         <button type="button" data-compass-tab="ask" class="active" aria-pressed="true">Assistant</button>
         <button type="button" data-compass-tab="issues" aria-pressed="false">Open issues <span id="issuesTabCount" hidden></span></button>
         <button type="button" data-compass-tab="find" aria-pressed="false">Find code</button>
       </div>
-      <div class="compass-shortcuts compass-map-entry"><button type="button" id="showMapOptions">Map controls · Districts, buildings &amp; zoom ↗</button></div>
+      <div class="compass-shortcuts compass-map-entry"><button type="button" id="showMapOptions" aria-label="Open city map controls">City controls <span aria-hidden="true">↗</span></button></div>
       <div id="findTab" hidden>
-      <h2>Where should you work?</h2>
+      <h2>Find code</h2>
       <p class="compass-intro">Describe a feature or search a file path. RepoWorld will point to likely code—not guess at unseen source.</p>
-      <label for="searchInput">FIND CODE</label>
+      <label for="searchInput">File, feature or symbol</label>
       <input class="search-input" type="search" id="searchInput" autocomplete="off" autocapitalize="off" maxlength="160" placeholder="Where is login handled?" aria-describedby="searchScope">
       <div id="searchWelcome" class="search-welcome">
-        <div class="suggest-label">TRY AN EXAMPLE</div>
+        <div class="suggest-label">Suggested searches</div>
         <button type="button" data-suggestion="Where is authentication handled?">Authentication <span>↗</span></button>
         <button type="button" data-suggestion="Where are API endpoints?">API routes <span>↗</span></button>
         <button type="button" data-suggestion="Where are the tests?">Tests <span>↗</span></button>
@@ -193,19 +193,19 @@
       <div class="compass-shortcuts"><button type="button" id="quickTour">Take the city tour ↗</button></div>
       </div>
       <div id="askTab" class="assistant-tab">
-        <div class="assistant-intro"><div class="assistant-sign">✳</div><h2>Ask your codebase.</h2>
+        <div class="assistant-intro"><h2>Ask your codebase</h2>
           <p>Find where to start, understand a module, or plan a fix—using real repository evidence.</p></div>
         <div id="assistantThread" class="assistant-thread" role="log" aria-live="polite">
           <div class="assistant-start"><strong>Your developer guide</strong><span>Ask how a feature works, what to change for a goal, or how to approach an issue.</span></div>
         </div>
         <div id="assistantContext" class="assistant-context" hidden></div>
-        <div class="assistant-compose"><label for="assistantQuestion">ASK ABOUT THIS REPOSITORY</label>
+        <div class="assistant-compose"><label for="assistantQuestion">Your question</label>
           <textarea id="assistantQuestion" rows="3" maxlength="650" placeholder="How can I add Google OAuth to this repo?"></textarea>
-          <button type="button" id="assistantSend">Send ↗</button></div>
+          <button type="button" id="assistantSend">Send</button></div>
         <p class="assistant-disclosure" id="assistantDisclosure">Public code excerpts may be sent to BharatCode when AI is configured. Responses are suggestions, not verified code changes.</p>
       </div>
       <div id="issuesTab" class="issues-tab" hidden>
-        <div class="issues-title"><div><h2>Open issues, placed in context.</h2><p>Find a place to contribute. Only GitHub's open issues are shown.</p></div>
+        <div class="issues-title"><div><h2>Open issues</h2><p>Explore reported issues and find a useful place to contribute.</p></div>
           <button type="button" id="refreshIssues" title="Refresh open issues" aria-label="Refresh open issues">↻</button></div>
         <div class="issue-summary" id="issueSummary">Checking GitHub issues…</div>
         <div class="issue-filters"><input id="issueFilterText" type="search" maxlength="100" autocomplete="off" aria-label="Search sampled GitHub issues" placeholder="Search titles, labels or issue number…"><select id="issueFilterType" aria-label="Filter sampled GitHub issues"><option value="all">All issues</option><option value="bug">Bugs</option><option value="good-first">Good first issues</option><option value="enhancement">Features &amp; enhancements</option><option value="mapped">Has city location hint</option></select></div>
