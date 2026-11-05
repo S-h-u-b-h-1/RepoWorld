@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import httpx
 
 from app.github import parse_repository, RepoError
+from app.main import app as repoworld_app
 
 
 def _origin(value: str, *, allow_local: bool = False) -> str:
@@ -31,7 +32,13 @@ def _origin(value: str, *, allow_local: bool = False) -> str:
 
 
 def run(origin: str, *, import_repo: str | None = None, allow_local: bool = False,
-        transport: httpx.BaseTransport | None = None) -> list[str]:
+        transport: httpx.BaseTransport | None = None, require_ai: bool = False,
+        verify_live_ai: bool = False, require_source_evidence: bool = False) -> list[str]:
+    if (verify_live_ai or require_source_evidence) and not import_repo:
+        raise ValueError('Live AI checks require --import-repo to identify a saved public city.')
+    if require_source_evidence and not verify_live_ai:
+        raise ValueError('--require-source-evidence also requires --verify-live-ai.')
+    require_ai = require_ai or verify_live_ai
     origin=_origin(origin, allow_local=allow_local)
     notes=[]
     def check(condition: bool, label: str):
@@ -42,9 +49,13 @@ def run(origin: str, *, import_repo: str | None = None, allow_local: bool = Fals
     with httpx.Client(base_url=origin, transport=transport, timeout=30, follow_redirects=False) as client:
         health=client.get('/api/health')
         check(health.status_code==200 and health.json().get('ok') is True, 'Health endpoint')
-        check(health.json().get('version') == '0.9.8', 'Expected RepoWorld v0.9.8')
+        check(health.json().get('version') == repoworld_app.version,
+              f'Deployed backend matches source version {repoworld_app.version}')
         ready=client.get('/api/ready')
         check(ready.status_code==200 and ready.json().get('ready') is True, 'Deployment readiness')
+        image=client.get('/api/ready.svg')
+        check(image.status_code==200 and 'image/svg+xml' in image.headers.get('content-type','')
+              and image.headers.get('cache-control')=='no-store', 'Launcher readiness SVG')
         index=client.get('/')
         check(index.status_code==200 and 'RepoWorld' in index.text, 'Website homepage')
         browser_issues=client.get('/static/browser-radar.js')
@@ -55,6 +66,14 @@ def run(origin: str, *, import_repo: str | None = None, allow_local: bool = Fals
             check('max-age=' in index.headers.get('strict-transport-security',''), 'HTTPS transport policy')
         session=client.get('/api/session')
         check(session.status_code==200 and session.json().get('guest') is True, 'Anonymous workspace')
+        status=client.get('/api/status')
+        check(status.status_code==200 and isinstance(status.json().get('aiConfigured'),bool), 'AI capability status')
+        configured=status.json()['aiConfigured']
+        check(session.json().get('aiConfigured') is configured, 'Session and AI status agree')
+        if require_ai:
+            check(configured, 'BharatCode key configured on host (not a live model test)')
+        elif not configured:
+            notes.append('WARN BharatCode not configured on host; deterministic guidance is not AI inference.')
         check(bool(session.json().get('csrf')), 'Workspace CSRF configured')
         cookie=session.headers.get('set-cookie','').lower()
         check('httponly' in cookie or bool(client.cookies.get('rw_session')), 'Session cookie created')
@@ -76,7 +95,30 @@ def run(origin: str, *, import_repo: str | None = None, allow_local: bool = Fals
             check(bool(item.get('graph',{}).get('nodes')), 'Imported city has buildings')
             issues=client.get(f"/api/my-repos/{item['id']}/issues", timeout=45)
             check(issues.status_code==200 and isinstance(issues.json().get('issues'),list), 'GitHub Issue Radar')
-            notes.append('INFO This smoke test deliberately did not call BharatCode AI.')
+            if verify_live_ai:
+                question=('Using only public repository evidence, identify a source module '
+                          'to inspect first and say what remains unknown.')
+                model_response=client.post(
+                    f"/api/my-repos/{item['id']}/assistant",
+                    json={'question':question},
+                    headers={'Origin':origin,'X-RepoWorld-CSRF':session.json()['csrf']},
+                    timeout=245,
+                )
+                check(model_response.status_code==200,
+                      f'BharatCode assistant route (HTTP {model_response.status_code})')
+                answer=model_response.json()
+                check(answer.get('mode')=='ai' and answer.get('model')=='qwen-3.8-27b'
+                      and isinstance(answer.get('answer'),str) and bool(answer['answer'].strip()),
+                      'BharatCode real model response (not navigation fallback)')
+                cited=any(isinstance(s,dict) and s.get('evidence')=='excerpt'
+                          for s in answer.get('sources',[]))
+                if require_source_evidence:
+                    check(answer.get('sourceFilesRead',0)>0 and cited,
+                          'Model answer includes inspected public source evidence')
+                elif not cited:
+                    notes.append('WARN Model replied, but inspected source citations were not confirmed.')
+            else:
+                notes.append('INFO No BharatCode model calls made; use --verify-live-ai explicitly.')
         else:
             notes.append('INFO No GitHub import or BharatCode model calls made.')
     return notes
@@ -87,9 +129,14 @@ def main():
     parser.add_argument('url',help='Public HTTPS origin such as https://repoworld.onrender.com')
     parser.add_argument('--import-repo',default=None,help='Optional public owner/repo (spends import budget)')
     parser.add_argument('--allow-local',action='store_true',help='Use HTTP loopback for development')
+    parser.add_argument('--require-ai',action='store_true',help='Fail if BharatCode is not configured (no model call)')
+    parser.add_argument('--verify-live-ai',action='store_true',help='Spend one explicitly requested model call after import')
+    parser.add_argument('--require-source-evidence',action='store_true',help='Require a fetched source excerpt in the model answer')
     args=parser.parse_args()
     try:
-        for note in run(args.url,import_repo=args.import_repo,allow_local=args.allow_local):
+        for note in run(args.url,import_repo=args.import_repo,allow_local=args.allow_local,
+                        require_ai=args.require_ai,verify_live_ai=args.verify_live_ai,
+                        require_source_evidence=args.require_source_evidence):
             print(note)
         return 0
     except (ValueError, RuntimeError, httpx.RequestError, KeyError, TypeError) as exc:
