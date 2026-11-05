@@ -138,6 +138,9 @@
       // always means a closer camera. This prevents clipped cities on first load.
       this.overviewDistance=this.fitOverviewDistance();
       this.resetCamera();
+      // The initial empty frame may share this animation timestamp.
+      // Never throttle the first real drawing after a repository switch.
+      this.lastPaintAt=null;
     }
     getDistricts(){return this.districts.map(d=>({kind:d.kind,name:d.name,short:d.short,description:d.hint,count:d.count,color:d.color}));}
     getHotspots(){return [...this.hotspots];}
