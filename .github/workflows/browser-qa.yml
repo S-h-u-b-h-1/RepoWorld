@@ -1,0 +1,42 @@
+name: RepoWorld Browser QA
+
+on:
+  push:
+    branches: [main, "qa/**"]
+    paths:
+      - "app/static/**"
+      - "app/tests/layout_browser_smoke.py"
+      - ".github/workflows/browser-qa.yml"
+  pull_request:
+    paths:
+      - "app/static/**"
+      - "app/tests/layout_browser_smoke.py"
+      - ".github/workflows/browser-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install smoke-test dependencies
+        run: python -m pip install -r requirements-dev.txt playwright
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Exercise synthetic dense city at desktop and mobile sizes
+        run: python -m app.tests.layout_browser_smoke
+      - name: Upload offline screenshots for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repoworld-offline-city-browser-qa
+          path: evidence/browser-qa/
+          if-no-files-found: warn
+          retention-days: 3
