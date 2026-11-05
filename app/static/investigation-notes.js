@@ -34,6 +34,9 @@
     const path=clean(entry.file,260);
     if(!path||path.startsWith('/')||path.includes('\\')||
       path.split('/').some(p=>['','.','..'].includes(p)))return null;
+    let decoded;
+    try{decoded=decodeURIComponent(url.pathname);}catch{return null;}
+    if(!decoded.endsWith('/'+path))return null;
     return {path,url:url.href};
   }
   function render({graph,issue,guide=null,browserFallback=false}={}) {

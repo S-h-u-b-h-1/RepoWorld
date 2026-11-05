@@ -42,7 +42,9 @@ test('untrusted issue text and foreign source links cannot inject Markdown links
   const notes=run({graph,issue:{number:13,title:'](https://attacker.test) #attack\n##fake',
     snippet:'Click [malicious](https://attacker.test) now.',matches:[{nodeId:'fake',confidence:'observed',path:'bad.js'}]},
     guide:{mode:'navigation',answer:'Read the file',
-      sources:[{file:'secret.js',evidence:'excerpt',url:'https://evil.example/a'}]}});
+      sources:[{file:'secret.js',evidence:'excerpt',url:'https://evil.example/a'},
+        {file:'services/api/login.py',evidence:'excerpt',
+         url:'https://github.com/testowner/demo-city/blob/main/services/other/file.py'}]}});
   assert.doesNotMatch(notes,/]\(https:\/\/attacker\.test\)/);
   assert.doesNotMatch(notes,/##fake/);
   assert.doesNotMatch(notes,/evil\.example/);
