@@ -19,7 +19,7 @@
     <div class="world-ambient" aria-hidden="true"></div>
     <div id="worldBackdrop" class="world-backdrop" aria-hidden="true"></div>
     <div class="canvas-stage" id="canvasStage" hidden>
-      <canvas id="worldCanvas" tabindex="0" role="application" aria-label="Interactive repository city. Drag to orbit, wheel or pinch to zoom, Shift-drag to pan, double-click to reset, arrow keys to orbit, bracket keys to browse modules, plus and minus to zoom, Home to reset, click a building to inspect its module, or select an issue pin to investigate an open GitHub issue."></canvas>
+      <canvas id="worldCanvas" tabindex="0" role="application" aria-label="Interactive repository city. Drag to orbit, wheel or pinch to zoom, Shift-drag to pan, double-click to reset, arrow keys to orbit, bracket keys to browse modules, plus and minus to zoom, Home to reset, click a district label to focus its buildings, click a building to inspect its module, or select an issue pin to investigate an open GitHub issue."></canvas>
       <div class="city-glass-overlay" aria-hidden="true"></div>
       <div id="sceneTooltip" class="scene-tooltip" role="tooltip" hidden></div>
     </div>
@@ -57,7 +57,7 @@
     </section>
 
     <div class="world-status" id="worldStatus" hidden><span class="status-light"></span><span id="cityStatusText">CITY READY</span><span class="status-divider"></span><span id="cityStatusCounts"></span></div>
-    <div class="city-hint" id="cityHint" hidden>DRAG TO EXPLORE <span>·</span> CLICK A BUILDING TO UNDERSTAND IT</div>
+    <div class="city-hint" id="cityHint" hidden>DRAG TO EXPLORE <span>·</span> TAP A DISTRICT LABEL TO FOCUS</div>
     <button type="button" class="issue-map-legend" id="issueMapLegend" hidden aria-label="Browse open GitHub issues for this repository" title="Browse issues and locate their suggested buildings"><i class="issue-legend-gold" aria-hidden="true"></i><span id="issueMapCount">OPEN ISSUES</span><span class="issue-legend-divider">·</span><i class="issue-legend-outline" aria-hidden="true">?</i><span>SUGGESTED LOCATIONS</span><span class="issue-legend-arrow" aria-hidden="true">↗</span></button>
     <button type="button" class="map-command-trigger" id="mapCommandTrigger" aria-label="Find code in this repository" aria-keyshortcuts="Control+k Meta+k /" hidden><span class="grid-icon" aria-hidden="true">⌕</span><span>Explore code</span><span class="keycap">⌘ K</span></button>
     <div class="map-tools" id="mapTools" hidden>

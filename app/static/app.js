@@ -108,7 +108,12 @@
   function initializeRenderer(){
     if(!state.renderer){state.renderer=new window.RepoWorldRenderer($('worldCanvas'),{
       onSelect(id){hideIssueDrawer();clearImpact();state.chosen=id;renderInspector();$('inspector').scrollTop=0;$('inspector').hidden=false;$('tourPanel').hidden=true;},
-      onIssueSelect(id){openIssueMarker(id);}
+      onIssueSelect(id){openIssueMarker(id);},
+      onDistrictSelect(kind){
+        hideIssueDrawer();$('inspector').hidden=true;$('tourPanel').hidden=true;
+        $('mapTools').hidden=true;
+        toast(kindLabel(kind)+' focused. Open Map controls and choose Overview to see the whole city.');
+      }
     });}
   }
   async function useGraph(graph){

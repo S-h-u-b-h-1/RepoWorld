@@ -117,6 +117,15 @@ async def verify(browser,width,height):
     assert metrics["inspectorFont"]>=14 and metrics["sceneFont"]>=14,metrics
     assert 110<=metrics["overviewDistance"]<=850,metrics
     await page.screenshot(path=str(OUT/f"city-{width}.png"),full_page=True)
+    # A visible district plaque should be an actual zoom/focus target.
+    plaque=await page.evaluate("window.__TEST_SCENE__.districtHitAreas.find(p=>p.kind==='api')")
+    assert plaque,"API district plaque missing"
+    rect=await page.locator("#worldCanvas").bounding_box()
+    await page.mouse.click(rect["x"]+(plaque["x1"]+plaque["x2"])/2,
+                           rect["y"]+(plaque["y1"]+plaque["y2"])/2)
+    await page.wait_for_function("window.__TEST_SCENE__.activeDistrict==='api'")
+    await page.wait_for_timeout(400)
+    await page.screenshot(path=str(OUT/f"district-focused-{width}.png"),full_page=True)
 
     # Existing transient controls must be usable at both sizes.
     await page.locator("#mapCommandTrigger").click()

@@ -328,3 +328,15 @@
 .compass-map-entry{margin-top:11px;padding-top:0;border-top:0}
 .compass-map-entry button{width:100%;text-align:left;border:1px solid #3c424c;border-radius:9px;background:#22262b;color:#dbe9f5;font-size:13px;line-height:1.55;padding:10px 13px}
 .compass-map-entry button:hover,.compass-map-entry button:focus-visible{background:#303842;border-color:#9db8d5}
+
+/* Mobile visual QA: protect readable repo title, quiet distant façades. */
+.issue-summary{font-size:12px;line-height:1.55;color:#b3c6d6}
+.issue-disclaimer,.issue-drawer-caveat,.inspector-fact{font-size:12px;line-height:1.6}
+.compass-tabs button{font-size:13px}
+@media(max-width:620px){
+  .guest-kicker{display:none}
+  .repo-title-line strong{max-width:calc(100vw - 126px);font-size:21px;line-height:1.18}
+  .repo-caption{font-size:10px}
+  .city-hint{font-size:10px;max-width:70vw}
+  .issue-summary{font-size:12px}
+}

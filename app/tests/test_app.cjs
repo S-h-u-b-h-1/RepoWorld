@@ -80,7 +80,7 @@ function makeApp({authenticated=true,active=true,assistantResult=null,multipleIs
   }
   let renderer;
   class Renderer{
-    constructor(canvas,opts){renderer=this;this.onSelect=opts.onSelect;this.onIssueSelect=opts.onIssueSelect;this.selected=null;}
+    constructor(canvas,opts){renderer=this;this.onSelect=opts.onSelect;this.onIssueSelect=opts.onIssueSelect;this.onDistrictSelect=opts.onDistrictSelect;this.selected=null;}
     setGraph(graph){this.graph=graph;}
     getDistricts(){return [{kind:'frontend',name:'Frontend Boulevard',count:1},{kind:'api',name:'API Heights',count:1}];}
     focusDistrict(kind){this.focusedDistrict=kind;return true;}
@@ -568,4 +568,13 @@ test('map controls are discoverable on every developer-console tab, not buried i
   assert.ok(where>markup.indexOf('id="searchDialog"'));
   assert.ok(where<markup.indexOf('id="findTab"'));
   assert.equal(markup.split('id="showMapOptions"').length,2);
+});
+
+test('district focus hides competing overlays and keeps existing city graph intact',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  ui.el('inspector').hidden=false;
+  ui.renderer.onDistrictSelect('api');
+  assert.equal(ui.el('inspector').hidden,true);
+  assert.equal(ui.el('mapTools').hidden,true);
+  assert.equal(ui.renderer.graph.nodes.length,GRAPH.nodes.length);
 });

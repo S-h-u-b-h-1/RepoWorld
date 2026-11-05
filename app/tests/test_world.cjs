@@ -397,3 +397,20 @@ test('keyboard cycling selects actual imported buildings and wraps without inven
   renderer.setGraph({nodes:[],edges:[]});
   assert.equal(renderer.cycleModule(1),null);
 });
+
+test('visible district plaques can be clicked to focus, with issue pins retaining priority',()=>{
+  const chosen=[];
+  const {renderer,events}=world({onDistrictSelect:kind=>chosen.push(kind)});
+  renderer.setGraph(graph);renderer.render(2000);
+  const plaque=renderer.districtHitAreas.find(p=>p.kind==='api');
+  assert.ok(plaque,'API district label is visible at desktop overview');
+  const x=(plaque.x1+plaque.x2)/2,y=(plaque.y1+plaque.y2)/2;
+  assert.equal(renderer.getDistrictHit(x,y)?.kind,'api');
+  events.pointerdown({pointerId:1,pointerType:'mouse',clientX:x,clientY:y});
+  events.pointerup({pointerId:1,pointerType:'mouse',clientX:x,clientY:y});
+  assert.deepEqual(chosen,['api']);
+  assert.equal(renderer.activeDistrict,'api');
+  assert.equal(renderer.edges.length,graph.edges.length);
+  renderer.setGraph({nodes:[],edges:[]});renderer.render(2200);
+  assert.equal(renderer.districtHitAreas.length,0);
+});

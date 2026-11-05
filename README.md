@@ -10,6 +10,10 @@ Use **https://repoworld-launch.onrender.com** as the first-visit and hackathon e
 
 The launcher preserves only validated public `?repo=owner%2Frepo` parameters. It never reads or stores session cookies, CSRF values, private code, or BharatCode secrets; browsers may automatically attach an existing backend cookie to its image readiness request. This improves first paint and honest cold-start feedback; **it does not eliminate Render Free's backend spin-up delay or ephemeral data loss**. The interactive explorer, GitHub importer, and AI assistant remain on the existing Python service. Static launch tests are part of GitHub CI.
 
+## Visual QA follow-up: readable mobile city and tappable district plaques
+
+Visual acceptance screenshots at 1440×900 and 390×844 exposed a clipped mobile header and dense pale window lines at distant zoom. Mobile now hides the redundant guest tagline so the repository name can use available width, and Issue Radar summaries and inspector caveats have larger type. Remote towers use darker, calmer façades with window detail only when it can be resolved at screen scale. **Tap or click a drawn district plaque** to focus its real buildings, then open **Map controls → Overview** to return; this works without extra GitHub calls. District names remain heuristic code classifications, never runtime locations.
+
 ## Building-by-building exploration
 
 The temporary **Explore code → Map controls** panel has **Previous building** and **Next building** controls. They cycle deterministically through real imported module buildings and open the existing inspector. When the city canvas is focused, use **[** and **]** to navigate without a mouse. The ordering uses district, name and stable module IDs; it does not invent files or run code.
