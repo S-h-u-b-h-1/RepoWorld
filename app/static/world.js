@@ -62,33 +62,70 @@
       const present=DISTRICT_ORDER.filter(kind=>groups.has(kind));
       const primary=groups.has('core')?'core':present.slice().sort((a,b)=>
         groups.get(b).reduce((v,n)=>v+(n.fileCount||1),0)-groups.get(a).reduce((v,n)=>v+(n.fileCount||1),0))[0];
-      const placements=[[-32,-20],[10,-34],[37,-19],[-41,7],[38,11],[-31,29],[1,38],[31,34],[-12,-45]];
-      this.primaryKind=primary;this.districts=[];
-      let satellite=0;
-      present.forEach(kind=>{
-        const items=groups.get(kind);const central=kind===primary;
-        const slot=central?[0,0]:placements[satellite++%placements.length];
-        const center={x:slot[0],z:slot[1]};
+      // Every module is a real clickable building. Previous 4.4-unit grid
+      // spacing could overlap buildings up to 6.9 units wide. Keep a physical
+      // gap at every density, including the 72-module graph limit.
+      const TILE=7.9, PLATFORM_GAP=5.5;
+      const positions=[[-.96,-.63],[.31,-1],[1,-.47],[-1,.28],[1,.29],
+        [-.8,.88],[.18,1],[.82,.82],[-.32,-1.15]];
+      const spiralSlot=index=>{
+        let ring=1;
+        while(index>=8*ring){index-=8*ring;ring++;}
+        const side=2*ring;
+        if(index<side)return {x:ring,z:-ring+index};
+        index-=side;
+        if(index<side)return {x:ring-index,z:ring};
+        index-=side;
+        if(index<side)return {x:-ring,z:ring-index};
+        index-=side;
+        return {x:-ring+index,z:-ring};
+      };
+      const planned=present.map(kind=>{
+        const items=groups.get(kind),central=kind===primary;
         const columns=Math.max(1,Math.ceil(Math.sqrt(items.length)));
-        const nodeRows=Math.ceil(items.length/columns);
+        const rows=Math.ceil(items.length/columns);
         items.sort((a,b)=>b.fileCount-a.fileCount||String(a.id).localeCompare(String(b.id)));
         items.forEach((node,i)=>{
-          if(central){const angle=i/Math.max(1,items.length)*PI2-.2;
-            const radius=items.length===1?8.5:8.7+(i%2)*1.3;
-            node.x=center.x+Math.cos(angle)*radius;node.z=center.z+Math.sin(angle)*radius;}
-          else{const cx=i%columns,cz=Math.floor(i/columns);
-            node.x=center.x+(cx-(columns-1)/2)*4.4;
-            node.z=center.z+(cz-(nodeRows-1)/2)*4.8;}
+          if(central){
+            const slot=spiralSlot(i);
+            node.x=slot.x*TILE;node.z=slot.z*TILE;
+          }else{
+            node.x=((i%columns)-(columns-1)/2)*TILE;
+            node.z=(Math.floor(i/columns)-(rows-1)/2)*TILE;
+          }
           node.width=clamp(1.65+Math.log2(Math.max(1,node.fileCount)+1)*.26,1.9,3.45);
           node.height=clamp(5.5+Math.log2(Math.max(1,node.fileCount)+1)*1.29+hash(node.id)*2.9,6.2,15.4);
           node.color=COLORS[kind];node.district=DISTRICTS[kind].name;
           node.landmark=false;node.degree=0;
         });
-        const halfWidth=central?15.2:Math.max(7.5,(columns-1)*4.4/2+4.9);
-        const halfDepth=central?14.6:Math.max(7.4,(nodeRows-1)*4.8/2+4.9);
-        this.districts.push({kind,...DISTRICTS[kind],color:COLORS[kind],count:items.length,
-          center,halfWidth,halfDepth,nodes:items,central});
+        const halfWidth=Math.max(central?15.2:7.5,...items.map(node=>Math.abs(node.x)+node.width+2));
+        const halfDepth=Math.max(central?14.6:7.4,...items.map(node=>Math.abs(node.z)+node.width+2));
+        return {kind,...DISTRICTS[kind],color:COLORS[kind],count:items.length,
+          center:{x:0,z:0},halfWidth,halfDepth,nodes:items,central};
       });
+      const positioned=[];
+      // Keep the old floating-district orientation, but push each island
+      // outward until its actual occupied bounds cannot overlap another.
+      let satellite=0;
+      for(const district of planned.filter(d=>d.central).concat(planned.filter(d=>!d.central))){
+        if(!district.central){
+          const [dx,dz]=positions[satellite++%positions.length];
+          let found=false;
+          for(let radius=28;radius<=700;radius+=3.5){
+            const cx=dx*radius,cz=dz*radius;
+            const overlaps=positioned.some(other=>
+              Math.abs(cx-other.center.x)<district.halfWidth+other.halfWidth+PLATFORM_GAP &&
+              Math.abs(cz-other.center.z)<district.halfDepth+other.halfDepth+PLATFORM_GAP);
+            if(!overlaps){
+              district.center={x:cx,z:cz};found=true;break;
+            }
+          }
+          if(!found)throw Error('Unable to place a code district without collision');
+          for(const node of district.nodes){node.x+=district.center.x;node.z+=district.center.z;}
+        }
+        positioned.push(district);
+      }
+      this.districts=positioned;
       this.nodes=nodes;this.issueMarkers=new Map();this.issueHitAreas=[];
       const lookup=new Map(nodes.map(n=>[n.id,n]));
       this.edges=(graph.edges||[]).map(edge=>({...edge,a:lookup.get(edge.source),b:lookup.get(edge.target)})).filter(e=>e.a&&e.b);
@@ -101,6 +138,9 @@
       // always means a closer camera. This prevents clipped cities on first load.
       this.overviewDistance=this.fitOverviewDistance();
       this.resetCamera();
+      // The initial empty frame may share this animation timestamp.
+      // Never throttle the first real drawing after a repository switch.
+      this.lastPaintAt=null;
     }
     getDistricts(){return this.districts.map(d=>({kind:d.kind,name:d.name,short:d.short,description:d.hint,count:d.count,color:d.color}));}
     getHotspots(){return [...this.hotspots];}
@@ -129,10 +169,38 @@
       this.selected=id;this.activeDistrict=focus?node.kind:this.activeDistrict;
       if(focus){this.zoomAnchor=null;this.targetPan={x:node.x,z:node.z};this.targetDistance=Math.min(this.distance,60);}
     }
+    fitDistrictDistance(district){
+      const original={distance:this.distance,yaw:this.yaw,pitch:this.pitch,pan:this.pan};
+      this.yaw=-.54;this.pitch=.78;this.pan={...district.center};
+      const side=this.width<600?18:Math.min(90,this.width*.085);
+      const top=Math.min(116,this.height*.135),bottom=this.height-(this.width<600?90:110);
+      const samples=[];
+      for(const x of [-district.halfWidth,district.halfWidth])
+        for(const z of [-district.halfDepth,district.halfDepth]){
+          samples.push([district.center.x+x,0,district.center.z+z]);
+          samples.push([district.center.x+x,-5,district.center.z+z]);
+        }
+      for(const node of district.nodes)samples.push([node.x,node.height+.37,node.z]);
+      if(district.central)samples.push([0,27,0]);
+      let fitted=MAX_CAMERA_DISTANCE;
+      for(let distance=65;distance<=MAX_CAMERA_DISTANCE;distance+=5){
+        this.distance=distance;
+        const projected=samples.map(p=>this.project(...p));
+        if(projected.every(p=>p.x>=side&&p.x<=this.width-side&&p.y>=top&&p.y<=bottom)){
+          fitted=distance;break;
+        }
+      }
+      this.distance=original.distance;this.yaw=original.yaw;
+      this.pitch=original.pitch;this.pan=original.pan;
+      return fitted;
+    }
     focusDistrict(kind){
       const district=this.districts.find(d=>d.kind===kind);if(!district)return false;
-      this.activeDistrict=kind;this.targetPan={...district.center};
-      this.zoomAnchor=null;this.targetDistance=clamp(58+Math.max(district.halfWidth,district.halfDepth)*.65,65,98);
+      this.activeDistrict=kind;
+      this.zoomAnchor=null;
+      const distance=this.fitDistrictDistance(district);
+      this.targetPan={...district.center};
+      this.targetDistance=clamp(distance,65,MAX_CAMERA_DISTANCE);
       this.yaw=-.54;this.pitch=.78;
       return true;
     }
@@ -156,7 +224,7 @@
       }
       if(this.districts.some(d=>d.central))sample.push([0,27,0]);
       let fitted=110;
-      for(let distance=110;distance<=650;distance+=5){
+      for(let distance=110;distance<=MAX_CAMERA_DISTANCE;distance+=5){
         this.distance=distance;
         const pixels=sample.map(point=>this.project(...point));
         const x=pixels.map(p=>p.x),y=pixels.map(p=>p.y);
@@ -443,9 +511,9 @@
           const x=d.center.x+((col+.5)/cells*2-1)*(d.halfWidth-1.5);
           const z=d.center.z+((row+.5)/cells*2-1)*(d.halfDepth-1.5);
           if(d.central&&Math.hypot(x,z)<4.2)continue;
-          if(d.nodes.some(n=>Math.hypot(n.x-x,n.z-z)<2.2))continue;
           const w=(d.central?.48:.41)+hash(d.kind+'-w-'+idx)*.25;
           const h=1.1+hash(d.kind+'-h-'+idx)*(d.central?4.5:3.7);
+          if(d.nodes.some(n=>Math.abs(n.x-x)<n.width+w+.8 && Math.abs(n.z-z)<n.width+w+.8))continue;
           blocks.push({x,z,w,h,idx,depth:this.project(x,h/2,z).depth});
         }
         blocks.sort((a,b)=>b.depth-a.depth);
@@ -599,10 +667,11 @@
         (side,y)=>this.project(n.x+visibleX+Math.sign(visibleX)*.025,y,n.z+side),
         (side,y)=>this.project(n.x+side,y,n.z+visibleZ+Math.sign(visibleZ)*.025)
       ];
-      const floors=Math.min(8,Math.max(3,Math.floor(h/1.6)));
+      const detailed=roof.scale*w>=3.3;
+      const floors=detailed?Math.min(this.width<650||this.nodes.length>45?4:8,Math.max(3,Math.floor(h/1.6))):0;
       for(let facadeIndex=0;facadeIndex<facesVisible.length;facadeIndex++){
         const point=facesVisible[facadeIndex];
-        for(let lane=1;lane<=3;lane++){
+        for(let lane=1;lane<=3&&detailed;lane++){
           const side=-w+2*w*lane/4;
           const a=point(side,.65),b=point(side,h-.35);
           ctx.strokeStyle=rgba('#bcd9f1',.18);
@@ -717,6 +786,17 @@
       }
     }
     render(now=performance.now()){
+      // Preserve smooth gestures, but avoid repainting the idle skyline at 60 Hz.
+      // In particular a large mobile city can be GPU/CPU intensive.
+      const transitioning=this.isDragging||this.zoomAnchor||this.spin||
+        Math.abs(this.targetDistance-this.distance)>.15||
+        Math.abs(this.targetPan.x-this.pan.x)>.1||
+        Math.abs(this.targetPan.z-this.pan.z)>.1;
+      const minFrameMs=this.width<650?33:transitioning?16:60;
+      if(this.lastPaintAt!=null&&now-this.lastPaintAt<minFrameMs){
+        this.frame=requestAnimationFrame(t=>this.render(t));return;
+      }
+      this.lastPaintAt=now;
       const dt=Math.min(50,now-(this.lastTime||now));this.lastTime=now;this.time=now;
       if(this.spin&&!this.motion&&!this.isDragging)this.yaw+=dt*.00018;
       // Use time-based easing, not per-frame or fixed-unit jumps.

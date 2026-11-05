@@ -10,6 +10,10 @@ Use **https://repoworld-launch.onrender.com** as the first-visit and hackathon e
 
 The launcher preserves only validated public `?repo=owner%2Frepo` parameters. It never reads or stores session cookies, CSRF values, private code, or BharatCode secrets; browsers may automatically attach an existing backend cookie to its image readiness request. This improves first paint and honest cold-start feedback; **it does not eliminate Render Free's backend spin-up delay or ephemeral data loss**. The interactive explorer, GitHub importer, and AI assistant remain on the existing Python service. Static launch tests are part of GitHub CI.
 
+## City layout reliability and mobile responsiveness
+
+Dense repositories use spacing derived from the **actual displayed building widths**, so source-module towers and floating district footprints do not overlap in map coordinates. A bounded square-spiral wraps crowded central code districts around the non-source landmark. Overview and district focus cameras fit the calculated bounds; decorative scenery avoids real buildings. Small-scale façades skip sub-pixel windows and idle/mobile rendering is frame-rate limited. These optimizations do **not** add code links, infer new source evidence, or imply exact runtime topology.
+
 ## City readability and navigation (v0.9.9)
 
 The original near-black, floating-district perspective remains. Decorative blocks are quieter, real source-module buildings have raised roofs and camera-aware lit façades, and the symbolic central beacon is slightly less dominant. Labels, issue text, menus, tooltips and inspector copy are larger. Open **Explore code → Map views · More** for a district jump, a most-connected-module focus (only sampled static links count), and accessible +/− zoom buttons. Existing wheel/pinch zoom, Shift-drag pan and double-click reset remain. This upgrade does not change source evidence or classify decorative buildings as code.

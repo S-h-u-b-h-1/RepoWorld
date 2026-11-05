@@ -17,6 +17,12 @@
 - Add district jump, most-connected-module camera focus, and zoom buttons **inside existing map options**, preserving the uncluttered default view. Sampled static imports remain the only link evidence.
 - CI and actual hosted visual/mobile verification are separate gates; monitor overlap and render performance across large repositories.
 
+## Layout QA hardening
+
+- Collision-safe real building and island placement for a full 72-module graph; intentional decorative streets are not code.
+- Bounds-based district camera focus and lower-detail rendering for tiny/mobile facades; throttle idle and mobile repaints.
+- Tests cover 72-module multi-district layouts, dense single-district layouts and small canvases. Browser screenshots and real-device performance still need independent validation.
+
 ## Open release gates (not assumed complete)
 1. **v0.9.8 live check:** GitHub CI, Render deployed commit, public /api/health and /api/ready, and a real browser Issue Radar test. Local fixture tests cannot certify GitHub CORS/network access for every visitor.
 2. **Authenticated provider reliability:** Add a least-privilege server-side GITHUB_TOKEN privately on Render if source-verified issue investigations must work when the server's shared GitHub IP is rate-limited; verify behavior and 401/403 handling.
