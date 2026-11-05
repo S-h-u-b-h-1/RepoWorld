@@ -11,6 +11,7 @@
   <script defer src="/static/world.js"></script>
   <script defer src="/static/browser-radar.js"></script>
   <script defer src="/static/investigation-notes.js"></script>
+  <script defer src="/static/offline-city.js"></script>
   <script defer src="/static/app.js"></script>
 </head>
 <body>
@@ -39,6 +40,10 @@
             <div id="repoMenuItems" class="repo-menu-items"></div>
             <button type="button" class="popover-command" id="refreshCurrentRepo" hidden><span>↻</span> Refresh code index</button>
             <button type="button" class="popover-command" id="copyCityLink" hidden><span>↗</span> Copy public city link</button>
+            <button type="button" class="popover-command" id="saveOfflineCity" hidden><span>▣</span> Save city for offline viewing</button>
+            <button type="button" class="popover-command" id="openOfflineCityMenu" hidden><span>◇</span> Open browser-saved offline city</button>
+            <button type="button" class="popover-command" id="reconnectOfflineCity" hidden><span>↻</span> Re-import to restore live tools</button>
+            <button type="button" class="popover-command" id="clearOfflineCity" hidden><span>×</span> Clear browser city backup</button>
             <button type="button" class="popover-command" id="addAnotherRepo"><span>＋</span> Add GitHub repository</button>
           </div>
         </div>
@@ -54,6 +59,8 @@
       <button class="primary-cta" type="button" id="emptyAddRepo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Add GitHub repository <span aria-hidden="true">↗</span></button>
       <button type="button" class="recent-repo-action" id="reimportRecent" hidden>Re-import <strong id="recentRepoName"></strong> <span aria-hidden="true">↗</span></button>
       <p class="recent-repo-help" id="recentRepoHelp" hidden>This browser remembers only the public repository name. Re-importing fetches current code after you confirm.</p>
+      <button type="button" class="recent-repo-action" id="openOfflineCity" hidden>Open saved map offline <strong id="offlineRepoName"></strong> <span aria-hidden="true">↗</span></button>
+      <p class="recent-repo-help" id="offlineRepoHelp" hidden>Opt-in browser backup: view stored public buildings and paths without live GitHub, Issue Radar or AI. Re-import to reconnect.</p>
       <div class="empty-assurance">NO ACCOUNT REQUIRED <span>·</span> PUBLIC REPOSITORIES ONLY <span>·</span> READ-ONLY IMPORT</div>
     </section>
 

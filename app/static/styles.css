@@ -363,3 +363,8 @@
 /* v0.9.13: distinguish identifier observations from unverified path hints. */
 .source-lead-summary{font-size:13px;line-height:1.6;color:#bfcbd8;margin:15px 0 10px}
 .source-lead-card .source-lead-meta{font-size:13px;line-height:1.55}
+
+/* v0.9.14: opt-in offline public city restore, no always-visible control. */
+.empty-state #openOfflineCity{border-color:#5e737f;color:#e2edf6;background:#1f2730}
+.empty-state #openOfflineCity:hover{background:#2b3945}
+#repoMenu .popover-command[hidden]{display:none}

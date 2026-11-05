@@ -1,4 +1,4 @@
-# RepoWorld v0.9.13 — The City of Code
+# RepoWorld v0.9.14 — The City of Code
 
 **RepoWorld is a read-only, sign-in-free tool for exploring public GitHub repositories as interactive 3D cities.** Districts are groups of source files; buildings represent modules; illuminated links represent sampled **static imports**, not runtime traffic. Issue Radar displays GitHub's reported open issues as referenced, suggested, or unplaced locations. An optional BharatCode assistant helps developers investigate code and plan safe next steps.
 
@@ -29,6 +29,14 @@ The original near-black, floating-district perspective remains. Decorative block
 ### Issue Radar quick filters
 
 Within **Explore code → Open issues**, search the fetched issue sample by title, issue number or labels, or filter by bug, good-first-issue, enhancement, or location-hint categories. Filtering happens entirely in the browser with no extra GitHub requests. It does not search every issue in the repository, promote unverified paths to source observations, or change the map markers.
+
+## Opt-in local city map backup (v0.9.14)
+
+Render Free can delete its temporary SQLite guest workspaces when the server spins down, restarts or redeploys. RepoWorld now provides a deliberately **browser-only, opt-in map backup**: while viewing a real imported public GitHub city, open the top-left repository menu and select **Save city for offline viewing**. Only a bounded sanitized copy of the public city topology, grouped modules, short file paths and sampled declaration names is stored in **this browser's own local storage**. It saves **no cookies, CSRF tokens, API keys, private repositories, issue reports or AI answers**, and does not send anything to a backup server.
+
+If the free backend later loses its city, the empty screen offers **Open saved map offline**. You can orbit and inspect its public buildings, browse sampled static imports, run a local filename/path search, and follow GitHub source links without re-importing. The city clearly says **LOCAL OFFLINE PREVIEW**. While offline, **Issue Radar, AI, change-impact API requests and source investigation are unavailable**; **Re-import to restore live tools** opens the ordinary import confirmation with the public repo name and spends normal import quota only after confirmation. The saved map may be stale, exists in only one browser, and disappears when the user clears site storage. It is **not** durable server storage, account sync or a confirmed current GitHub snapshot.
+
+One local map is retained at a time (max 1.6 million characters). The user can explicitly clear it in the repository menu. Storage-blocked and oversized cases fail safely without changing the live city; no automatic GitHub refresh, model request, or browser persistence occurs without a user action.
 
 ## Clearer source investigation and useful issue briefs (v0.9.13)
 

@@ -7,6 +7,7 @@ const vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'../static/app.js'),'utf8');
 const browserIssueSource=fs.readFileSync(path.join(__dirname,'../static/browser-radar.js'),'utf8');
 const issueNotesSource=fs.readFileSync(path.join(__dirname,'../static/investigation-notes.js'),'utf8');
+const offlineCitySource=fs.readFileSync(path.join(__dirname,'../static/offline-city.js'),'utf8');
 const GRAPH={name:'Demo City',owner:'testowner',branch:'main',source:'github',url:'https://github.com/testowner/demo-city',
   nodes:[{id:'web',name:'Web',kind:'frontend',path:'apps/web',fileCount:6,files:['apps/web/index.ts'],description:'Website'},
     {id:'api',name:'API',kind:'api',path:'services/api',fileCount:5,files:['services/api/index.py'],description:'API service'}],
@@ -30,7 +31,7 @@ class FakeElement{
   focus(){}
   closest(){return null;}
 }
-function makeApp({authenticated=true,active=true,assistantResult=null,multipleIssues=false,importFailure=null,issueFailure=null,issueFailureMessage=null,browserIssues=null,browserIssueError=null,sourceLeadResult=null,sourceLeadError=null,deepLink='',storedLastRepo=null,storageThrows=false}={}){
+function makeApp({authenticated=true,active=true,assistantResult=null,multipleIssues=false,importFailure=null,issueFailure=null,issueFailureMessage=null,browserIssues=null,browserIssueError=null,sourceLeadResult=null,sourceLeadError=null,deepLink='',storedLastRepo=null,storedOfflineCity=null,storageThrows=false}={}){
   const elements=new Map();
   const el=id=>{if(!elements.has(id))elements.set(id,new FakeElement(['importInput','aiQuestion','searchInput','assistantQuestion'].includes(id)?'input':'div'));return elements.get(id);};
   const layers=['structure','dependencies','flows','hotspots'].map(n=>Object.assign(new FakeElement('button'),{dataset:{layer:n}}));
@@ -108,9 +109,11 @@ function makeApp({authenticated=true,active=true,assistantResult=null,multipleIs
   const copied=[];
   const store=new Map();
   if(storedLastRepo!==null)store.set('repoworld:last-public-repo:v1',storedLastRepo);
+  if(storedOfflineCity!==null)store.set('repoworld:offline-city:v1',storedOfflineCity);
   const localStorage={
     getItem(key){if(storageThrows)throw Error('Storage blocked');return store.has(key)?store.get(key):null;},
-    setItem(key,value){if(storageThrows)throw Error('Storage blocked');store.set(key,String(value));}
+    setItem(key,value){if(storageThrows)throw Error('Storage blocked');store.set(key,String(value));},
+    removeItem(key){if(storageThrows)throw Error('Storage blocked');store.delete(key);}
   };
   const location={origin:'http://127.0.0.1:8004',pathname:'/',search:deepLink,assign(){}};
   const window={RepoWorldRenderer:Renderer,REPOWORLD_COLORS:{frontend:'#88ccff'},REPOWORLD_DISTRICTS:{frontend:{name:'Frontend Boulevard'},api:{name:'API Heights'}},
@@ -119,6 +122,7 @@ function makeApp({authenticated=true,active=true,assistantResult=null,multipleIs
     clearTimeout(){},setTimeout(fn){fn();return 1;},encodeURIComponent,Response};
   vm.runInNewContext(browserIssueSource,sandbox);
   vm.runInNewContext(issueNotesSource,sandbox);
+  vm.runInNewContext(offlineCitySource,sandbox);
   vm.runInNewContext(source,sandbox);
   const flush=()=>new Promise(resolve=>setImmediate(resolve));
   async function boot(){document.onload();for(let i=0;i<4;i++)await flush();}
@@ -724,4 +728,55 @@ test('independent public source cards distinguish literal identifier text from s
   assert.match(ui.copied[0],/stream editing changed/);
   assert.equal(ui.calls.filter(x=>x.url.endsWith('/source-lead')).length,1);
   assert.equal(ui.calls.filter(x=>x.url.endsWith('/assistant')).length,0);
+});
+
+test('explicit offline backup survives guest workspace loss and never calls GitHub or BharatCode',async()=>{
+  const first=makeApp({active:true});await first.boot();
+  assert.equal(first.el('saveOfflineCity').hidden,false);
+  assert.equal(first.store.has('repoworld:offline-city:v1'),false);
+  first.el('saveOfflineCity').listeners.click();
+  const backed=first.store.get('repoworld:offline-city:v1');
+  assert.ok(backed);
+  const second=makeApp({active:false,storedOfflineCity:backed});
+  await second.boot();
+  assert.equal(second.el('openOfflineCity').hidden,false);
+  assert.match(second.el('offlineRepoName').textContent,/testowner\/demo-city/);
+  assert.equal(second.calls.filter(c=>c.url==='/api/my-repos').length,0);
+  await second.el('openOfflineCity').listeners.click();
+  assert.match(second.el('cityStatusText').textContent,/LOCAL OFFLINE PREVIEW/);
+  assert.equal(second.renderer.graph.nodes.length,2);
+  assert.equal(second.calls.filter(c=>c.url.includes('/issues')||c.url==='/api/tour').length,0);
+  second.el('mapCommandTrigger').listeners.click();
+  second.el('assistantQuestion').value='Explain login';
+  await second.el('assistantSend').listeners.click();
+  assert.equal(second.calls.filter(c=>c.url.endsWith('/assistant')).length,0);
+  second.el('reconnectOfflineCity').listeners.click();
+  assert.equal(second.el('importInput').value,'testowner/demo-city');
+  assert.equal(second.calls.filter(c=>c.url==='/api/my-repos'&&c.opts.method==='POST').length,0);
+});
+test('offline path search uses the saved map without server queries',async()=>{
+  const first=makeApp({active:true});await first.boot();first.el('saveOfflineCity').listeners.click();
+  const offline=makeApp({active:false,storedOfflineCity:first.store.get('repoworld:offline-city:v1')});
+  await offline.boot();await offline.el('openOfflineCity').listeners.click();
+  offline.el('mapCommandTrigger').listeners.click();
+  offline.compassTabs[2].listeners.click();
+  offline.el('searchInput').value='apps/web';
+  offline.el('searchInput').listeners.input();
+  for(let i=0;i<3;i++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(offline.el('searchResults').children.length,1);
+  assert.match(offline.el('searchScope').textContent,/OFFLINE BROWSER MAP/);
+  assert.equal(offline.calls.filter(c=>c.url.includes('/find')).length,0);
+  offline.el('searchResults').children[0].listeners.click();
+  assert.equal(offline.renderer.selected,'web');
+});
+test('offline backup is opt-in, clearable and disabled when storage is blocked',async()=>{
+  const blocked=makeApp({active:true,storageThrows:true});await blocked.boot();
+  blocked.el('saveOfflineCity').listeners.click();
+  assert.equal(blocked.el('openOfflineCityMenu').hidden,true);
+  const working=makeApp({active:true});await working.boot();
+  working.el('saveOfflineCity').listeners.click();
+  assert.equal(working.el('openOfflineCityMenu').hidden,false);
+  working.el('clearOfflineCity').listeners.click();
+  assert.equal(working.store.has('repoworld:offline-city:v1'),false);
+  assert.equal(working.el('openOfflineCityMenu').hidden,true);
 });

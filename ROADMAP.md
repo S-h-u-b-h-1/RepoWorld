@@ -45,6 +45,11 @@
 - Group independent public source results into literal identifier text observations versus weaker filename/path hints; do not treat candidates as proof of defect relevance.
 - Preserve current original issue links, source references, explicit no-AI disclosure, and the minimalist existing Issue Radar drawer. No new backend requests or permanent panels.
 
+## Offline browser city map (v0.9.14)
+- Explicit one-city public map backup in browser localStorage, with structural/URL/path validation, whitelisted metadata and size bounds. No credential or full source text capture.
+- User can open a read-only local 3D preview after Render Free loses server-side SQLite; tool calls for issue feeds, AI, and server impact analysis are disabled. Browser-only filenames/path search and sampled building inspection remain.
+- Reconnect requires explicit re-import under existing quotas, and local storage can be cleared. This is **not** cross-device, durable server persistence or a server-authenticated graph restoration.
+
 ## Open release gates (not assumed complete)
 1. **v0.9.8 live check:** GitHub CI, Render deployed commit, public /api/health and /api/ready, and a real browser Issue Radar test. Local fixture tests cannot certify GitHub CORS/network access for every visitor.
 2. **Authenticated provider reliability:** Add a least-privilege server-side GITHUB_TOKEN privately on Render if source-verified issue investigations must work when the server's shared GitHub IP is rate-limited; verify behavior and 401/403 handling.

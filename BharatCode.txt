@@ -8,6 +8,10 @@ for source modules. Optional illuminated links show only sampled STATIC imports,
 not verified runtime execution. File discovery, source search, and change-impact
 tracing are intentionally evidence-limited. A city link contains only the public
 owner/repo name; it never shares guest-session credentials or source snippets.
+An explicit local offline map backup can preserve a bounded, sanitized public
+module/filename graph in the visitor's own browser. It cannot make live AI,
+GitHub issues or other server endpoints work after the free instance loses
+its guest SQLite workspace; returning to live tools requires a confirmed re-import.
 New visitors must confirm a GitHub import before any external repository fetch.
 
 Issue Radar retrieves reported open GitHub issues, excludes pull requests, and

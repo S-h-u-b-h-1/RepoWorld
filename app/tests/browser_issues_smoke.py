@@ -23,6 +23,7 @@ async def check(page,graph):
                 '<script defer src="/static/world.js"></script>',
                 '<script defer src="/static/browser-radar.js"></script>',
                 '<script defer src="/static/investigation-notes.js"></script>',
+                '<script defer src="/static/offline-city.js"></script>',
                 '<script defer src="/static/app.js"></script>'):
         html=html.replace(tag,'')
     await page.set_content(html)
@@ -59,6 +60,7 @@ async def check(page,graph):
     await page.add_script_tag(content=(ROOT/'app/static/world.js').read_text())
     await page.add_script_tag(content=(ROOT/'app/static/browser-radar.js').read_text())
     await page.add_script_tag(content=(ROOT/'app/static/investigation-notes.js').read_text())
+    await page.add_script_tag(content=(ROOT/'app/static/offline-city.js').read_text())
     await page.add_script_tag(content=(ROOT/'app/static/app.js').read_text())
     await page.evaluate('document.dispatchEvent(new Event("DOMContentLoaded"))')
     await page.locator('#canvasStage').wait_for(state='visible')
