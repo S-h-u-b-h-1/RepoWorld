@@ -392,3 +392,144 @@
   .empty-sample-action{font-size:12.5px}
   .modal-input-row input,.search-input,.assistant-compose textarea,.tour-question textarea,.issue-filters input,.issue-filters select{font-size:16px}
 }
+
+
+/* Developer console v2: a matte, content-first surface.
+   Every rule is scoped to #searchDialog; city and other sheets are unchanged. */
+#searchDialog.search-dialog {
+  color-scheme:dark;
+  width:min(704px,calc(100vw - 32px));
+  max-width:min(704px,calc(100vw - 32px));
+  max-height:min(88dvh,860px);
+  padding:0;
+  border:1px solid #383838;
+  border-radius:20px;
+  background:#171717;
+  color:#efefef;
+  box-shadow:0 25px 90px rgba(0,0,0,.64);
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+  scrollbar-color:#444 transparent;
+}
+#searchDialog::backdrop {background:rgba(0,0,0,.74);backdrop-filter:blur(2px)}
+#searchDialog .dialog-inner {padding:28px 32px 28px;display:flex;flex-direction:column;gap:0}
+#searchDialog .modal-topline {align-items:center;gap:14px;color:#ececec;letter-spacing:0;text-transform:none;font-size:14px;font-weight:620}
+#searchDialog .modal-topline>span {font-size:15px;font-weight:650;letter-spacing:-.015em}
+#searchDialog .modal-num {color:#898989;font-size:13px;margin-left:9px;font-weight:480;letter-spacing:0}
+#searchDialog .close-icon {display:grid;place-items:center;width:36px;height:36px;min-height:36px;min-width:36px;border:0;border-radius:10px;background:transparent;color:#bcbcbc;font-size:23px;font-weight:400;box-shadow:none}
+#searchDialog .close-icon:hover {background:#2a2a2a;color:#fff}
+#searchDialog .compass-tabs {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:24px 0 0;padding:4px;border:0;border-radius:12px;background:#222;box-shadow:none}
+#searchDialog .compass-tabs button {display:flex;justify-content:center;align-items:center;gap:6px;min-height:42px;border:0;border-radius:9px;padding:8px 10px;background:transparent;box-shadow:none;color:#a7a7a7;font-size:13px;font-weight:570;line-height:1.35;letter-spacing:0;transition:background .14s ease,color .14s ease}
+#searchDialog .compass-tabs button.active {background:#353535;color:#f5f5f5;box-shadow:none}
+#searchDialog .compass-tabs button:hover:not(.active){background:#2b2b2b;color:#ededed}
+#searchDialog .compass-tabs button #issuesTabCount {display:inline-flex;align-items:center;justify-content:center;min-width:18px;min-height:18px;margin-left:0;padding:0 5px;border-radius:7px;background:#3f3f3f;color:#e4e4e4;font-size:11px;font-weight:600}
+#searchDialog .compass-map-entry {margin:9px 0 0;display:flex;justify-content:flex-end;gap:0;padding:0;border:0}
+#searchDialog .compass-map-entry button {width:auto;min-height:30px;border:0;border-radius:8px;background:transparent;box-shadow:none;color:#a0a0a0;padding:4px 7px;font-size:12px;font-weight:510;line-height:1.5;text-align:right}
+#searchDialog .compass-map-entry button:hover {background:#282828;color:#eaeaea}
+#searchDialog .compass-map-entry button span {margin-left:3px}
+#searchDialog :where(#askTab,#issuesTab,#findTab){min-width:0}
+#searchDialog .assistant-intro {margin-top:3px}
+#searchDialog :where(.assistant-intro h2,.issues-title h2,#findTab>h2){margin:19px 0 9px!important;font-size:29px!important;line-height:1.22!important;letter-spacing:-.035em!important;font-weight:650!important;color:#f3f3f3}
+#searchDialog :where(.assistant-intro p,.issues-title p,.compass-intro){max-width:610px;font-size:14px!important;line-height:1.6!important;color:#a8a8a8!important;margin:0!important;letter-spacing:0}
+#searchDialog .assistant-sign {display:none}
+#searchDialog .assistant-thread {min-height:125px;max-height:min(38dvh,345px);display:flex;flex-direction:column;gap:13px;margin:18px 0 0;padding:10px 1px 13px;overflow:auto;scrollbar-color:#454545 transparent}
+#searchDialog .assistant-start {display:grid;gap:5px;margin:0;padding:12px 0 18px;border:0;border-radius:0;background:transparent;box-shadow:none}
+#searchDialog .assistant-start strong {color:#e7e7e7;font-size:14px;font-weight:600;letter-spacing:0}
+#searchDialog .assistant-start span {color:#999;font-size:13px;line-height:1.65}
+#searchDialog .chat-bubble {border:0;border-radius:0;background:transparent;box-shadow:none;color:#e8e8e8;font-size:14px;line-height:1.6;padding:4px 0}
+#searchDialog .chat-bubble.user {background:#2d2d2d;border:0;border-radius:16px 16px 4px 16px;padding:12px 16px;max-width:88%;align-self:flex-end;color:#f2f2f2}
+#searchDialog .chat-bubble.assistant {background:transparent;border:0;padding:5px 3px;align-self:stretch}
+#searchDialog .chat-bubble .bubble-label {color:#aaa;font-size:11px;letter-spacing:.04em;font-weight:620}
+#searchDialog .chat-bubble p {color:#e8e8e8!important;font-size:14px!important;line-height:1.68!important;margin:4px 0 10px!important}
+#searchDialog .chat-bubble ol {color:#c3c3c3;font-size:13px;line-height:1.6;padding-left:20px}
+#searchDialog .assistant-source-list {gap:7px;margin-top:10px}
+#searchDialog :where(.assistant-source-list a,.assistant-node) {display:inline-flex;align-items:center;width:auto;max-width:100%;min-height:36px;padding:7px 11px;border:1px solid #414141;border-radius:9px;background:#272727;color:#ddd;font-size:12px;line-height:1.4;text-align:left;box-shadow:none}
+#searchDialog :where(.assistant-source-list a,.assistant-node):hover{background:#343434;border-color:#545454;color:#fff}
+#searchDialog .assistant-meta {font-size:12px;color:#8e8e8e;line-height:1.5}
+#searchDialog .assistant-context {margin:0 0 8px;border:0;border-radius:8px;padding:9px 11px;background:#252525;color:#c5c5c5;font-size:12px}
+#searchDialog .assistant-compose {display:flex;flex-direction:column;align-items:stretch;gap:9px;margin-top:12px;padding:14px 14px 12px;background:#242424;border:1px solid #424242;border-radius:16px;box-shadow:none;transition:border-color .16s ease}
+#searchDialog .assistant-compose:focus-within {border-color:#858585}
+#searchDialog .assistant-compose label {grid-column:auto;margin:0;color:#afafaf;font-size:12px;font-weight:550;line-height:1.4;letter-spacing:0;text-transform:none}
+#searchDialog .assistant-compose textarea {min-height:64px;max-height:190px;resize:vertical;width:100%;padding:2px 0;border:0;border-radius:0;background:transparent;color:#f0f0f0;box-shadow:none;outline:0;font-family:inherit;font-size:15px;font-weight:400;line-height:1.55;letter-spacing:0}
+#searchDialog .assistant-compose textarea:focus {border:0;outline:0;box-shadow:none}
+#searchDialog .assistant-compose textarea::placeholder{color:#949494;opacity:1}
+#searchDialog .assistant-compose button {align-self:flex-end;min-height:38px;padding:8px 19px;border:0;border-radius:10px;background:#f0f0f0;color:#1b1b1b;font-size:13px;font-weight:650;line-height:1.4;box-shadow:none}
+#searchDialog .assistant-compose button:hover {background:#fff}
+#searchDialog .assistant-compose button:disabled{background:#777;color:#252525;opacity:.7}
+#searchDialog .assistant-disclosure {margin:12px 0 0!important;color:#858585!important;font-size:11px!important;line-height:1.6!important}
+#searchDialog .issues-title {display:flex;justify-content:space-between;align-items:flex-start;margin:3px 0 0;gap:18px}
+#searchDialog .issues-title h2{margin-top:19px!important}
+#searchDialog .issues-title button {flex:none;display:grid;place-items:center;width:36px;height:36px;min-height:36px;margin-top:17px;padding:0;border:1px solid #3c3c3c;border-radius:10px;background:#222;color:#d4d4d4;font-size:21px;box-shadow:none}
+#searchDialog .issues-title button:hover {background:#333;border-color:#515151}
+#searchDialog .issue-summary {margin:16px 0 12px;color:#999;font-size:12px;line-height:1.6;letter-spacing:0;overflow-wrap:anywhere}
+#searchDialog .issue-filters {display:flex;gap:10px;align-items:stretch;margin:0 0 16px}
+#searchDialog .issue-filters :is(input,select) {box-sizing:border-box;min-height:44px;border:1px solid #414141;border-radius:10px;background:#262626;color:#ededed;padding:10px 13px;font:450 14px/1.5 system-ui;box-shadow:none;outline:0}
+#searchDialog .issue-filters input {flex:1;min-width:0}
+#searchDialog .issue-filters input::placeholder{color:#888}
+#searchDialog .issue-filters select{max-width:210px;cursor:pointer}
+#searchDialog .issue-filters :is(input,select):focus {border-color:#999;outline:0;box-shadow:0 0 0 1px #999}
+#searchDialog .issue-list {display:flex;flex-direction:column;gap:0;max-height:min(43dvh,420px);margin:0;padding:0;border:1px solid #363636;border-radius:13px;background:#1e1e1e;overflow-y:auto;overflow-x:hidden;scrollbar-color:#4b4b4b transparent}
+#searchDialog .issue-item {display:grid;gap:9px;padding:16px 18px 17px;margin:0;border:0;border-bottom:1px solid #343434;border-radius:0;background:transparent;box-shadow:none}
+#searchDialog .issue-item:last-child{border-bottom:0}
+#searchDialog .issue-item:hover {background:#232323}
+#searchDialog .issue-heading {display:flex;align-items:flex-start;gap:14px;justify-content:space-between}
+#searchDialog .issue-title-button {display:block;flex:1;min-width:0;margin:0;padding:0;border:0;border-radius:0;background:none;color:#ececec;font-size:14px;font-weight:600;line-height:1.45;text-align:left;text-decoration:none;overflow-wrap:anywhere}
+#searchDialog .issue-title-button:hover {color:#fff;text-decoration:underline;text-underline-offset:3px}
+#searchDialog .issue-number {flex:none;margin:1px 0 0;color:#8e8e8e;font-size:12px;line-height:1.5}
+#searchDialog .issue-places {display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#searchDialog .issue-label {display:inline-flex;align-items:center;max-width:100%;min-height:24px;padding:3px 8px;border:0;border-radius:7px;background:#303030;color:#bbb;font-size:11px;line-height:1.35;letter-spacing:0;overflow-wrap:anywhere}
+#searchDialog .issue-plain {font-size:12px;color:#999;line-height:1.5}
+#searchDialog .issue-place {min-height:30px;padding:6px 9px;border:1px solid #454545;border-radius:8px;background:#2b2b2b;color:#d1d1d1;font-size:11px;line-height:1.4;text-align:left}
+#searchDialog .issue-place.suggested{background:#2b2b2b;color:#bdbdbd;border-color:#484848}
+#searchDialog .issue-place:hover{background:#393939;border-color:#696969}
+#searchDialog .issue-item>.assistant-node {justify-self:start;margin-top:1px;min-height:30px;padding:5px 0;border:0;border-radius:0;background:transparent;color:#dedede;font-size:12px;font-weight:580;line-height:1.5}
+#searchDialog .issue-item>.assistant-node:hover {color:#fff;text-decoration:underline;text-underline-offset:3px}
+#searchDialog .issue-disclaimer {margin:12px 0 0!important;color:#888!important;font-size:11px!important;line-height:1.6!important}
+#searchDialog #findTab>h2 {margin-top:20px!important}
+#searchDialog #findTab>.compass-intro {margin:0!important}
+#searchDialog #findTab>label {display:block;margin:24px 0 9px;color:#bcbcbc;font-size:12px;font-weight:580;line-height:1.45;letter-spacing:0;text-transform:none}
+#searchDialog .search-input {display:block;width:100%;min-height:50px;padding:13px 14px;border:1px solid #444;border-radius:11px;background:#252525;color:#f2f2f2;font-size:15px;line-height:1.5;outline:0;box-shadow:none}
+#searchDialog .search-input::placeholder{color:#999}
+#searchDialog .search-input:focus {border-color:#999;box-shadow:0 0 0 1px #999}
+#searchDialog .search-welcome {display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px;margin:19px 0 8px}
+#searchDialog .suggest-label {flex:0 0 100%;margin:0 0 1px;color:#8f8f8f;font-size:12px;font-weight:550;letter-spacing:0;text-transform:none}
+#searchDialog .search-welcome button {display:inline-flex;justify-content:center;align-items:center;gap:10px;min-height:36px;padding:7px 12px;border:1px solid #3d3d3d;border-radius:9px;background:#282828;color:#c9c9c9;font-size:12px;line-height:1.4;white-space:nowrap}
+#searchDialog .search-welcome button span {display:none}
+#searchDialog .search-welcome button:hover {background:#333;border-color:#5b5b5b;color:#f3f3f3}
+#searchDialog .search-results {display:flex;flex-direction:column;gap:0;max-height:min(36dvh,330px);margin-top:15px;border:0;border-radius:12px;overflow:auto}
+#searchDialog .search-result {display:block;width:100%;min-height:58px;padding:13px 14px;border:0;border-bottom:1px solid #363636;border-radius:0;background:#232323;color:#ededed;text-align:left;box-shadow:none}
+#searchDialog .search-result:first-child{border-radius:12px 12px 0 0}
+#searchDialog .search-result:last-child{border-bottom:0;border-radius:0 0 12px 12px}
+#searchDialog .search-result:hover {background:#2d2d2d}
+#searchDialog .search-result strong {font-size:14px;font-weight:600}
+#searchDialog .search-result small {font-size:12px;line-height:1.5;color:#a5a5a5}
+#searchDialog .search-result .match-context{font-size:12px;color:#aeaeae}
+#searchDialog .search-result .result-meta .rank{font-size:11px;letter-spacing:0;color:#a4a4a4;text-transform:none}
+#searchDialog .search-disclosure {margin:12px 0 0!important;font-size:11px!important;line-height:1.6!important;color:#909090!important}
+#searchDialog .compass-shortcuts:not(.compass-map-entry){display:flex;justify-content:flex-end;gap:0;margin:13px 0 0;padding:0;border:0}
+#searchDialog .compass-shortcuts:not(.compass-map-entry) button{padding:5px 0;border:0;background:transparent;color:#aaa;font-size:12px}
+#searchDialog .compass-shortcuts:not(.compass-map-entry) button:hover{color:#eee}
+#searchDialog :is(button,input,textarea,select,a):focus-visible {outline:2px solid #a5a5a5;outline-offset:2px}
+@media(max-width:650px) {
+  #searchDialog.search-dialog{width:calc(100vw - 20px);max-width:calc(100vw - 20px);max-height:calc(100dvh - 22px);border-radius:16px}
+  #searchDialog .dialog-inner{padding:20px 18px 22px}
+  #searchDialog .modal-topline>span{font-size:14px}
+  #searchDialog .modal-num{font-size:12px;margin-left:5px}
+  #searchDialog .compass-tabs{margin-top:19px}
+  #searchDialog .compass-tabs button{font-size:11.5px;padding:8px 3px;gap:3px;white-space:nowrap}
+  #searchDialog :where(.assistant-intro h2,.issues-title h2,#findTab>h2){font-size:26px!important;margin-top:14px!important}
+  #searchDialog .assistant-thread{min-height:85px;max-height:25dvh;margin-top:12px}
+  #searchDialog .assistant-compose{padding:12px;gap:7px}
+  #searchDialog .assistant-compose textarea{font-size:16px;min-height:57px}
+  #searchDialog .assistant-compose button{min-height:40px}
+  #searchDialog .issue-filters{flex-direction:column;gap:8px}
+  #searchDialog .issue-filters input,#searchDialog .issue-filters select{font-size:16px;max-width:none;width:100%;flex:none}
+  #searchDialog .issue-list{max-height:34dvh}
+  #searchDialog .issue-item{padding:14px 13px 15px}
+  #searchDialog .issue-title-button{font-size:14px}
+  #searchDialog .search-input{font-size:16px}
+  #searchDialog .search-welcome button{white-space:normal}
+}
+@media(prefers-reduced-motion:reduce){
+  #searchDialog :is(button,input,textarea,select){transition:none!important}
+}

@@ -121,6 +121,31 @@ async def verify(browser,width,height):
     assert metrics["inspectorFont"]>=14 and metrics["sceneFont"]>=14,metrics
     assert 110<=metrics["overviewDistance"]<=850,metrics
     await page.screenshot(path=str(OUT/f"city-{width}.png"),full_page=True)
+
+    # Console-only design acceptance: matte surfaces, three working tabs,
+    # accessible controls and no horizontal scroll on either viewport.
+    await page.locator("#mapCommandTrigger").click()
+    assert await page.locator("#searchDialog").is_visible()
+    surface=await page.locator("#searchDialog").evaluate("""el => {
+      const style=getComputedStyle(el);
+      return {background:style.backgroundColor,blur:style.backdropFilter,
+              width:el.getBoundingClientRect().width,viewport:innerWidth};
+    }""")
+    assert surface["background"]=="rgb(23, 23, 23)",surface
+    assert surface["blur"]=="none",surface
+    assert surface["width"]<=surface["viewport"],surface
+    for tab in ("ask","issues","find"):
+        await page.locator(f'[data-compass-tab="{tab}"]').click()
+        assert await page.locator(f'[data-compass-tab="{tab}"]').get_attribute("aria-pressed")=="true"
+        assert await page.locator(f'[data-compass-tab="{tab}"]').evaluate("el => el.classList.contains('active')")
+        await page.wait_for_timeout(190)  # Capture the settled active tab, not an animated prior tab.
+        panel={"ask":"askTab","issues":"issuesTab","find":"findTab"}[tab]
+        assert await page.locator(f"#{panel}").is_visible()
+        if tab=="issues":
+            assert await page.locator("#issueList .issue-item").count()==1
+        await page.screenshot(path=str(OUT/f"console-{tab}-{width}.png"),full_page=True)
+        assert not await page.evaluate("document.documentElement.scrollWidth>innerWidth")
+    await page.locator("#closeSearch").click()
     # A visible district plaque should be an actual zoom/focus target.
     plaque=await page.evaluate("window.__TEST_SCENE__.districtHitAreas.find(p=>p.kind==='api')")
     assert plaque,"API district plaque missing"

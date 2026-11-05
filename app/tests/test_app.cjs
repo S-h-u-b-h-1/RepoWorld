@@ -298,7 +298,7 @@ test('open issue radar is visible inside existing command, not as new homepage b
   ui.compassTabs[1].listeners.click();
   assert.equal(ui.el('issuesTab').hidden,false);
   assert.equal(ui.el('issueList').children.length,2);
-  assert.equal(ui.el('issueSummary').textContent,'2 open issues sampled · 1 placed · 1 unplaced');
+  assert.equal(ui.el('issueSummary').textContent,'2 open issues sampled · 1 location hint · 1 unplaced');
   assert.ok(ui.calls.some(c=>c.url==='/api/my-repos/demo/issues'));
 });
 test('assistant supports a building context and sends CSRF authenticated questions',async()=>{
@@ -501,7 +501,7 @@ test('Issue Radar browser fallback labels server-unverified hints after GitHub p
   for(let i=0;i<7;i++)await new Promise(resolve=>setImmediate(resolve));
   assert.equal(ui.el('issuesTabCount').textContent,'2');
   assert.match(ui.el('issueMapCount').textContent,/2 OPEN ISSUES · 1 ON MAP/);
-  assert.match(ui.el('issueSummary').textContent,/BROWSER GITHUB FEED · UNVERIFIED BY SERVER/);
+  assert.match(ui.el('issueSummary').textContent,/GitHub browser feed \(not server-verified\)/);
   assert.deepEqual(Array.from(ui.renderer.issueMarkers.api?.suggested||[]),[12]);
   assert.equal(ui.renderer.issueMarkers.api?.referenced.length,0);
   const calls=ui.calls.filter(c=>c.url.startsWith('https://api.github.com/'));

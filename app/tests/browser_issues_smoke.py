@@ -64,7 +64,7 @@ async def check(page,graph):
     await page.add_script_tag(content=(ROOT/'app/static/app.js').read_text())
     await page.evaluate('document.dispatchEvent(new Event("DOMContentLoaded"))')
     await page.locator('#canvasStage').wait_for(state='visible')
-    await page.wait_for_function("document.querySelector('#issueSummary')?.textContent?.includes('BROWSER GITHUB FEED')",timeout=10000)
+    await page.wait_for_function("document.querySelector('#issueSummary')?.textContent?.includes('GitHub browser feed (not server-verified)')",timeout=10000)
     await page.locator('#mapCommandTrigger').click(timeout=5000)
     await page.locator('[data-compass-tab="issues"]').click(timeout=5000)
     await page.locator('#issueList .issue-item .issue-title-button').first.click(timeout=5000)
