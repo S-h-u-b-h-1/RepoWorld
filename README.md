@@ -12,7 +12,7 @@ The launcher preserves only validated public `?repo=owner%2Frepo` parameters. It
 
 ## Building-by-building exploration
 
-The temporary **Explore code → Map views · More** panel has **Previous building** and **Next building** controls. They cycle deterministically through real imported module buildings and open the existing inspector. When the city canvas is focused, use **[** and **]** to navigate without a mouse. The ordering uses district, name and stable module IDs; it does not invent files or run code.
+The temporary **Explore code → Map controls** panel has **Previous building** and **Next building** controls. They cycle deterministically through real imported module buildings and open the existing inspector. When the city canvas is focused, use **[** and **]** to navigate without a mouse. The ordering uses district, name and stable module IDs; it does not invent files or run code.
 
 ## City layout reliability and mobile responsiveness
 
@@ -20,7 +20,7 @@ Dense repositories use spacing derived from the **actual displayed building widt
 
 ## City readability and navigation (v0.9.9)
 
-The original near-black, floating-district perspective remains. Decorative blocks are quieter, real source-module buildings have raised roofs and camera-aware lit façades, and the symbolic central beacon is slightly less dominant. Labels, issue text, menus, tooltips and inspector copy are larger. Open **Explore code → Map views · More** for a district jump, a most-connected-module focus (only sampled static links count), and accessible +/− zoom buttons. Existing wheel/pinch zoom, Shift-drag pan and double-click reset remain. This upgrade does not change source evidence or classify decorative buildings as code.
+The original near-black, floating-district perspective remains. Decorative blocks are quieter, real source-module buildings have raised roofs and camera-aware lit façades, and the symbolic central beacon is slightly less dominant. Labels, issue text, menus, tooltips and inspector copy are larger. Open **Explore code → Map controls** for a district jump, a most-connected-module focus (only sampled static links count), and accessible +/− zoom buttons. Existing wheel/pinch zoom, Shift-drag pan and double-click reset remain. This upgrade does not change source evidence or classify decorative buildings as code.
 
 ### Issue Radar quick filters
 

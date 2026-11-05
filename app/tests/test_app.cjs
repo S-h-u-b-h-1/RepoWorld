@@ -561,3 +561,11 @@ test('map controls browse actual buildings, open the inspector and preserve sour
   assert.deepEqual(Array.from(ui.renderer.cycles),[1,-1]);
   assert.equal(ui.renderer.graph.edges.length,GRAPH.edges.length);
 });
+
+test('map controls are discoverable on every developer-console tab, not buried in Find code',()=>{
+  const markup=fs.readFileSync(path.join(__dirname,'../static/index.html'),'utf8');
+  const where=markup.indexOf('id="showMapOptions"');
+  assert.ok(where>markup.indexOf('id="searchDialog"'));
+  assert.ok(where<markup.indexOf('id="findTab"'));
+  assert.equal(markup.split('id="showMapOptions"').length,2);
+});

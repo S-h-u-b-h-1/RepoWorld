@@ -323,3 +323,8 @@
 .building-controls button{min-height:42px;flex:1;border:1px solid #4b5360;border-radius:9px;background:#22262d;color:#e3edf6;padding:10px;font-size:12px;font-weight:580;line-height:1.45}
 .building-controls button:hover{background:#333b46}
 .building-controls button:focus-visible{outline:2px solid #b1d9fd;outline-offset:2px}
+
+/* The city-navigation entry remains available on all developer-console tabs. */
+.compass-map-entry{margin-top:11px;padding-top:0;border-top:0}
+.compass-map-entry button{width:100%;text-align:left;border:1px solid #3c424c;border-radius:9px;background:#22262b;color:#dbe9f5;font-size:13px;line-height:1.55;padding:10px 13px}
+.compass-map-entry button:hover,.compass-map-entry button:focus-visible{background:#303842;border-color:#9db8d5}
