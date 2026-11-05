@@ -373,3 +373,22 @@
 #restoreOfflineCityEmpty{font-size:13px;min-height:39px;border-color:#586d7b;color:#dae9f5}
 #restoreOfflineCityEmpty:hover{background:#25313d}
 #offlineCityFile[hidden]{display:none}
+
+/* Release polish: a quieter, more legible guided first visit (no city redesign). */
+.empty-sample-action{margin-top:10px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 14px;border:1px solid transparent;border-radius:9px;background:transparent;color:#abbaca;font-size:13px;line-height:1.5;transition:background .15s,border-color .15s}
+.empty-sample-action strong{color:#e0edf7;font-weight:620}
+.empty-sample-action:hover,.empty-sample-action:focus-visible{border-color:#505b69;background:rgba(30,39,50,.72)}
+.world-status:not([hidden]){opacity:1;display:flex;padding:10px 13px;border:1px solid rgba(153,177,199,.24);border-radius:999px;background:rgba(11,17,26,.75);color:#cbd9e8;font-size:11px;letter-spacing:.055em;line-height:1.4;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.world-status .status-light{background:#afc7d8;box-shadow:none;flex-shrink:0}
+@media(min-width:1100px){.city-hint:not([hidden]){opacity:.76}}
+.repo-title-button,.popover-command,.repo-menu-item,.tool-segments button,.tool-controls button,.compass-tabs button,.close-icon,.secondary-cta,.issue-ai-actions button{min-height:44px}
+.close-icon{min-width:44px}
+:where(textarea,select,summary):focus-visible{outline:2px solid #b1d9fd;outline-offset:3px}
+:where(.inspector,.tour-panel,.issue-drawer,.map-tools,.search-results){scrollbar-color:#596574 transparent}
+@media(max-width:650px){
+  .world-status:not([hidden]){max-width:calc(100vw - 210px);padding:8px 10px;border-radius:10px;gap:5px;font-size:10px;letter-spacing:0}
+  .world-status .status-divider{display:none}
+  .empty-state{overflow-y:auto;justify-content:safe center;overscroll-behavior:contain}
+  .empty-sample-action{font-size:12.5px}
+  .modal-input-row input,.search-input,.assistant-compose textarea,.tour-question textarea,.issue-filters input,.issue-filters select{font-size:16px}
+}
