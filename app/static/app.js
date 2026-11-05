@@ -115,6 +115,7 @@
     if(!graph?.nodes?.length){toast('This repository has no displayable modules.',true);showEmpty();return;}
     state.graph=graph;state.chosen=null;state.tour=null;state.tourIndex=-1;clearImpact();
     state.chatHistory=[];state.assistantNode=null;state.assistantIssue=null;state.radar=null;state.radarError=null;state.radarRevision++;
+    $('issueFilterText').value='';$('issueFilterType').value='all';
     state.issueOpenNode=null;state.issueSelectedNumber=null;state.issueInsightCache.clear();state.issueInsightRevision++;$('issueDrawer').hidden=true;$('issueMapLegend').hidden=true;
     $('assistantThread').replaceChildren();addAssistantWelcome();setText('issuesTabCount','');$('issuesTabCount').hidden=true;
     showCity();initializeRenderer();
@@ -732,10 +733,26 @@
     const area=$('issueList');area.replaceChildren();
     if(state.radarError){setText('issueSummary','Issue feed unavailable: '+state.radarError);return;}
     if(!state.radar){setText('issueSummary','Checking GitHub open issues…');return;}
-    const info=state.radar;setText('issueSummary',(info.browserFallback?'BROWSER GITHUB FEED · UNVERIFIED BY SERVER · ':'')+`${info.total} open issues sampled · ${info.placed} placed · ${info.unplaced} unplaced${info.partial?' · Partial listing':''}`);
-    for(const item of info.issues||[])area.append(issueItem(item));
-    if(!area.children.length){const p=document.createElement('p');p.className='issue-plain';p.textContent='No open GitHub issues found in this sample.';area.append(p);}
-    setText('issueDisclaimer',info.scope||'Issue locations are suggestions, not proven affected files.');
+    const info=state.radar;
+    const query=esc($('issueFilterText').value).trim().toLowerCase().slice(0,100);
+    const kind=$('issueFilterType').value||'all';
+    const visible=(info.issues||[]).filter(issue=>{
+      const labels=(issue.labels||[]).map(x=>String(x).toLowerCase());
+      const hasLabel=word=>labels.some(label=>label.includes(word));
+      if(kind==='bug'&&!hasLabel('bug'))return false;
+      if(kind==='good-first'&&!labels.some(label=>label.includes('good first issue')||label.includes('good-first-issue')))return false;
+      if(kind==='enhancement'&&!hasLabel('feature')&&!hasLabel('enhancement'))return false;
+      if(kind==='mapped'&&!(issue.matches||[]).length)return false;
+      if(!query)return true;
+      return [issue.title,issue.number,issue.snippet,...labels].some(value=>String(value||'').toLowerCase().includes(query));
+    });
+    const filtered=Boolean(query)||kind!=='all';
+    const prefix=info.browserFallback?'BROWSER GITHUB FEED · UNVERIFIED BY SERVER · ':'';
+    const sampleScope=`${info.total} open issues sampled · ${info.placed} placed · ${info.unplaced} unplaced${info.partial?' · Partial listing':''}`;
+    setText('issueSummary',prefix+(filtered?`${visible.length} of ${info.total} sampled issues match · `:'' )+sampleScope);
+    for(const item of visible)area.append(issueItem(item));
+    if(!area.children.length){const p=document.createElement('p');p.className='issue-plain';p.textContent=filtered?'No sampled issues match these filters. Try another term or category.':'No open GitHub issues found in this sample.';area.append(p);}
+    setText('issueDisclaimer',(info.scope||'Issue locations are suggestions, not proven affected files.')+' Filters apply only to the displayed sample, not all GitHub issues.');
   }
   function renderBuildingIssues(nodeId){
     const container=$('buildingIssues'),list=$('buildingIssuesList');list.replaceChildren();
@@ -809,6 +826,8 @@
     $('assistantSend').addEventListener('click',sendAssistant);
     $('assistantQuestion').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();sendAssistant();}});
     $('refreshIssues').addEventListener('click',()=>loadIssueRadar(true));
+    $('issueFilterText').addEventListener('input',renderIssueRadar);
+    $('issueFilterType').addEventListener('change',renderIssueRadar);
     $('issueMapLegend').addEventListener('click',()=>openFind('','issues'));
     $('issueDrawerSelect').addEventListener('change',()=>{const selected=issueFor(Number($('issueDrawerSelect').value));if(selected){showIssueDetail(selected,state.issueOpenNode);$('issueDrawer').scrollTop=0;}});
     $('closeIssueDrawer').addEventListener('click',hideIssueDrawer);
