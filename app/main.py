@@ -143,6 +143,26 @@ async def ready():
     return {'ready':True, 'version':'0.9.8'}
 
 
+_READY_PIXEL_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" viewBox="0 0 1 1">'
+    '<rect width="1" height="1"/></svg>'
+)
+
+
+@app.get("/api/ready.svg", include_in_schema=False)
+async def ready_image():
+    """Image-based readiness probe for the separate, free static launcher.
+
+    A static favicon can load even when the database is unavailable. Return a
+    renderable image only when the same checks as /api/ready succeed. Cross-
+    origin image loading does not require exposing readiness JSON via CORS.
+    """
+    result = await ready()
+    if not isinstance(result, dict) or result.get("ready") is not True:
+        return Response(status_code=503)
+    return Response(content=_READY_PIXEL_SVG, media_type="image/svg+xml")
+
+
 @app.get("/api/session")
 async def get_session(request: Request, response: Response):
     # No signup/login. A random, browser-specific session is created on first visit.

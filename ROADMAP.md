@@ -8,7 +8,7 @@
 - Production HTTPS/CSRF/CSP protections, body limits and global/guest budgets.
 - Published GitHub source and hosted Render Free endpoint: https://repoworld-3b9e.onrender.com (actual deployed version must be checked).
 
-- Free static cold-start launcher: https://repoworld-launch.onrender.com, backed by an independent CDN site with a direct link to the real explorer and checked-in CI tests.
+- Free static cold-start launcher: https://repoworld-launch.onrender.com, backed by an independent CDN site with a direct link to the real explorer and checked-in CI tests. Its SVG image probe now checks **actual backend readiness**, not merely successful static asset delivery; live rollout remains to be verified.
 
 ## Open release gates (not assumed complete)
 1. **v0.9.8 live check:** GitHub CI, Render deployed commit, public /api/health and /api/ready, and a real browser Issue Radar test. Local fixture tests cannot certify GitHub CORS/network access for every visitor.
