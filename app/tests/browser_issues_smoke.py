@@ -74,6 +74,8 @@ async def check(page,graph):
     assert not any(x['url']=='/api/my-repos/demo/source-lead' for x in log)
     await page.locator('#issueInspectSource').click()
     await page.wait_for_function("document.querySelector('#issueAiHeading')?.textContent?.includes('ISSUE UNVERIFIED')")
+    assert 'No reported identifiers were confirmed' in await page.locator('.source-lead-summary').inner_text()
+    assert 'Path/title search hint only' in await page.locator('.source-lead-meta').first.inner_text()
     assert await page.locator('.source-lead-card > a').first.get_attribute('href')==(
       'https://github.com/pallets/flask/blob/HEAD/apps/web/src/app.tsx#L4-L9')
     await page.evaluate("""() => Object.defineProperty(navigator,'clipboard',{
@@ -84,6 +86,7 @@ async def check(page,graph):
     notes=await page.evaluate('window.__QA_NOTES__')
     assert 'public source independently inspected; issue not verified' in notes,notes
     assert 'Separately fetched public source' in notes,notes
+    assert 'search candidate only; no reported identifier confirmed' in notes,notes
     assert 'AI-generated suggestion' not in notes,notes
     log=await page.evaluate('window.__API_LOG__')
     assert len([x for x in log if x['url']=='/api/my-repos/demo/source-lead'])==1

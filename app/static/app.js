@@ -1,4 +1,4 @@
-/* RepoWorld v0.9.12: minimal city, source-scoped issue guide, and shareable public-repository entry points. */
+/* RepoWorld v0.9.13: minimal city, source-scoped issue guide, and shareable public-repository entry points. */
 (function(){
   'use strict';
   const $=id=>document.getElementById(id);
@@ -697,29 +697,52 @@
       text.textContent='No public source excerpts were found within the bounded lookup. Open the original GitHub issue to investigate manually.';
       container.append(text);
     }else{
-      const section=document.createElement('section');section.className='insight-section';
-      const heading=document.createElement('h3');heading.textContent='INDEPENDENTLY FETCHED PUBLIC SOURCE';section.append(heading);
-      for(const entry of sources){
-        const wrapper=document.createElement('div');wrapper.className='source-lead-card';
-        const link=document.createElement('a');link.href=entry.url;link.target='_blank';
-        link.rel='noopener noreferrer';link.textContent=String(entry.file||'Public source').slice(0,260)+' ↗';
-        wrapper.append(link);
-        const detail=document.createElement('p');detail.className='source-lead-meta';
-        const matched=Array.isArray(entry.matchedSymbols)?entry.matchedSymbols.slice(0,3)
-          .filter(s=>typeof s==='string').map(s=>s.slice(0,60)):[];
-        detail.textContent=entry.matchKind==='symbol'&&matched.length?
-          'Identifier text found in fetched file: '+matched.join(', ')+'. Issue impact unverified.':
-          'Public file inspected; relevance to the issue remains unverified.';
-        wrapper.append(detail);
-        if(typeof entry.preview==='string'&&entry.preview.trim()){
-          const preview=document.createElement('details');preview.className='source-lead-preview';
-          const summary=document.createElement('summary');summary.textContent='View bounded source excerpt';
-          const pre=document.createElement('pre');pre.textContent=entry.preview.slice(0,900);
-          preview.append(summary,pre);wrapper.append(preview);
+      // A file fetched from a real repository does not verify issue relevance.
+      // Distinguish literal identifier text from weaker filename/path hints.
+      const matched=sources.filter(entry=>entry.matchKind==='symbol'&&
+        Array.isArray(entry.matchedSymbols)&&entry.matchedSymbols.some(s=>typeof s==='string'&&s.trim()));
+      const candidates=sources.filter(entry=>!matched.includes(entry));
+      const summary=document.createElement('p');summary.className='source-lead-summary';
+      summary.textContent=matched.length
+        ?matched.length+' file'+(matched.length===1?'':'s')+' contain'+(matched.length===1?'s':'')+' reported identifier text; '+
+          candidates.length+' other inspected file'+(candidates.length===1?'':'s')+
+          ' remain search candidates. This does not verify the issue.'
+        :'No reported identifiers were confirmed in the fetched excerpts. '+
+          sources.length+' public file'+(sources.length===1?' was':'s were')+
+          ' inspected as path/title search candidates only.';
+      container.append(summary);
+      const groups=[
+        {title:'IDENTIFIER TEXT FOUND IN SOURCE',items:matched},
+        {title:'OTHER INSPECTED FILES · SEARCH HINTS ONLY',items:candidates}
+      ];
+      for(const group of groups){
+        if(!group.items.length)continue;
+        const section=document.createElement('section');section.className='insight-section';
+        const heading=document.createElement('h3');heading.textContent=group.title;section.append(heading);
+        for(const entry of group.items){
+          const wrapper=document.createElement('div');wrapper.className='source-lead-card';
+          const link=document.createElement('a');link.href=entry.url;link.target='_blank';
+          link.rel='noopener noreferrer';link.textContent=String(entry.file||'Public source').slice(0,260)+' ↗';
+          wrapper.append(link);
+          const detail=document.createElement('p');detail.className='source-lead-meta';
+          const symbols=Array.isArray(entry.matchedSymbols)?entry.matchedSymbols.slice(0,3)
+            .filter(s=>typeof s==='string').map(s=>s.slice(0,60)):[];
+          detail.textContent=group===groups[0]&&symbols.length
+            ?'Identifier text in fetched file: '+symbols.join(', ')+'. Issue relevance is unverified.'
+            :entry.matchKind==='path-hint'
+              ?'Path/title search hint only; no matching identifier confirmed.'
+              :'Public file inspected; no matching report identifier confirmed.';
+          wrapper.append(detail);
+          if(typeof entry.preview==='string'&&entry.preview.trim()){
+            const preview=document.createElement('details');preview.className='source-lead-preview';
+            const label=document.createElement('summary');label.textContent='View bounded source excerpt';
+            const pre=document.createElement('pre');pre.textContent=entry.preview.slice(0,900);
+            preview.append(label,pre);wrapper.append(preview);
+          }
+          section.append(wrapper);
         }
-        section.append(wrapper);
+        container.append(section);
       }
-      container.append(section);
     }
     const scope=document.createElement('p');scope.className='insight-disclosure';
     scope.textContent=result.sourceScope==='commit-pinned'

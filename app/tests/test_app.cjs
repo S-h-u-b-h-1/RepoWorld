@@ -690,3 +690,38 @@ test('server-confirmed issues hide independent browser-only source lookup',async
   assert.equal(ui.el('issueInspectSource').hidden,true);
   assert.equal(ui.calls.filter(x=>x.url.endsWith('/source-lead')).length,0);
 });
+
+test('independent public source cards distinguish literal identifier text from search hints',async()=>{
+  const feed=[{number:774,state:'open',title:'Disable cycling to recipients',
+    body:'Recipients cannot be changed in edit mode. Update: stream editing changed.',
+    labels:[]}];
+  const findings={mode:'source-lead',issueVerified:false,assistantUsed:false,
+    sourceFilesRead:2,sourceScope:'live-branch',sources:[
+      {file:'services/api/index.py',evidence:'excerpt',matchKind:'path-hint',
+        url:'https://github.com/testowner/demo-city/blob/HEAD/services/api/index.py#L4-L6',
+        matchedSymbols:[],preview:'4: def edit_mode(): pass'},
+      {file:'apps/web/index.ts',evidence:'excerpt',matchKind:'symbol',
+        url:'https://github.com/testowner/demo-city/blob/HEAD/apps/web/index.ts#L8-L12',
+        matchedSymbols:['recipient_box'],preview:'8: const recipient_box = 0;'}]};
+  const ui=makeApp({active:true,issueFailure:429,browserIssues:feed,sourceLeadResult:findings});
+  await ui.boot();for(let i=0;i<5;i++)await new Promise(resolve=>setImmediate(resolve));
+  ui.el('mapCommandTrigger').listeners.click();ui.compassTabs[1].listeners.click();
+  ui.el('issueList').children[0].children[0].children[0].listeners.click();
+  await ui.el('issueInspectSource').listeners.click();
+  const rows=ui.el('issueAiResult').children;
+  const summary=rows.find(x=>x.className==='source-lead-summary');
+  assert.ok(summary);
+  assert.match(summary.textContent,/1 file contain/);
+  const groups=rows.filter(x=>x.className==='insight-section');
+  assert.equal(groups.length,2);
+  assert.match(groups[0].children[0].textContent,/IDENTIFIER TEXT FOUND IN SOURCE/);
+  assert.match(groups[1].children[0].textContent,/SEARCH HINTS ONLY/);
+  assert.match(groups[0].children[1].children[1].textContent,/recipient_box/);
+  assert.match(groups[1].children[1].children[1].textContent,/Path\/title search hint only/);
+  await ui.el('issueCopyNotes').listeners.click();
+  assert.match(ui.copied[0],/identifier text observed/);
+  assert.match(ui.copied[0],/search candidate only; no reported identifier confirmed/);
+  assert.match(ui.copied[0],/stream editing changed/);
+  assert.equal(ui.calls.filter(x=>x.url.endsWith('/source-lead')).length,1);
+  assert.equal(ui.calls.filter(x=>x.url.endsWith('/assistant')).length,0);
+});

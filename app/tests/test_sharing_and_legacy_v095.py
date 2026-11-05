@@ -18,7 +18,7 @@ async def test_old_repository_get_is_retired_without_fetching_github(monkeypatch
         assert result.status_code == 410
         assert "retired" in result.json()["detail"].lower()
         assert result.headers["cache-control"] == "no-store"
-        assert (await client.get("/api/health")).json()["version"] == "0.9.12"
+        assert (await client.get("/api/health")).json()["version"] == "0.9.13"
 
 
 @pytest.mark.asyncio

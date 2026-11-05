@@ -1,4 +1,4 @@
-# RepoWorld v0.9.12 — The City of Code
+# RepoWorld v0.9.13 — The City of Code
 
 **RepoWorld is a read-only, sign-in-free tool for exploring public GitHub repositories as interactive 3D cities.** Districts are groups of source files; buildings represent modules; illuminated links represent sampled **static imports**, not runtime traffic. Issue Radar displays GitHub's reported open issues as referenced, suggested, or unplaced locations. An optional BharatCode assistant helps developers investigate code and plan safe next steps.
 
@@ -29,6 +29,12 @@ The original near-black, floating-district perspective remains. Decorative block
 ### Issue Radar quick filters
 
 Within **Explore code → Open issues**, search the fetched issue sample by title, issue number or labels, or filter by bug, good-first-issue, enhancement, or location-hint categories. Filtering happens entirely in the browser with no extra GitHub requests. It does not search every issue in the repository, promote unverified paths to source observations, or change the map markers.
+
+## Clearer source investigation and useful issue briefs (v0.9.13)
+
+The browser-only issue guide now separates public source files with **literal reported identifier matches** from files retrieved only as **filename/path search hints**. Finding a source file is evidence that it exists, not that the unverified issue affects it. The issue panel summarizes that distinction and preserves all original source links and bounded excerpts. No additional GitHub or BharatCode calls are performed.
+
+**Copy investigation notes** now prefers the available full issue body over GitHub's shortened list snippet. Long reports are abbreviated near sentence/word boundaries with an explicit disclosure and an unchanged link to the original issue; Markdown is safely escaped. Notes qualify each fetched public file as either an identifier text observation or a search candidate, never a confirmed bug or fix.
 
 ## Independent source lookup for browser-only issue reports (v0.9.12)
 

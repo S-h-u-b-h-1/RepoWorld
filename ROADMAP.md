@@ -40,6 +40,11 @@
 - Copy notes retain independently fetched source references, marked as such; source excerpts are code facts but not issue causality. Empty/error states remain honest.
 - Browser-only and regular source workflows have distinct provenance; full hosted real-GitHub test remains an outstanding release gate.
 
+## Issue investigation clarity (v0.9.13)
+- Prefer complete received issue-body context over the short list snippet when copying notes; keep a bounded, disclosed partial report when necessary.
+- Group independent public source results into literal identifier text observations versus weaker filename/path hints; do not treat candidates as proof of defect relevance.
+- Preserve current original issue links, source references, explicit no-AI disclosure, and the minimalist existing Issue Radar drawer. No new backend requests or permanent panels.
+
 ## Open release gates (not assumed complete)
 1. **v0.9.8 live check:** GitHub CI, Render deployed commit, public /api/health and /api/ready, and a real browser Issue Radar test. Local fixture tests cannot certify GitHub CORS/network access for every visitor.
 2. **Authenticated provider reliability:** Add a least-privilege server-side GITHUB_TOKEN privately on Render if source-verified issue investigations must work when the server's shared GitHub IP is rate-limited; verify behavior and 401/403 handling.
