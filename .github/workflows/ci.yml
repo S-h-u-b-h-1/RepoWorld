@@ -31,4 +31,10 @@ jobs:
           test -s evidence/restored-city-1440.png
           test -s app/static/favicon.svg
       - name: Compile all backend modules
-        run: python -m compileall -q app
+        run: python -m compileall -q app scripts
+      - name: Hackathon entry preflight
+        run: python scripts/check_build_league.py
+      - name: Public release archive integrity and secret scan
+        run: |
+          git archive --format=zip --prefix=RepoWorld/ HEAD -o /tmp/repoworld-release.zip
+          python scripts/audit_public_release.py /tmp/repoworld-release.zip
