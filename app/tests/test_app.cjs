@@ -148,6 +148,19 @@ test('guest users without repositories get a single add-repo empty state',async(
   ui.el('emptyAddRepo').listeners.click();
   assert.equal(ui.el('addRepoDialog').open,true);
 });
+test('public example shortcut prefills the dialog without importing until confirmed',async()=>{
+  const ui=makeApp({active:false});await ui.boot();
+  const before=ui.calls.length;
+  ui.el('trySampleRepo').listeners.click();
+  assert.equal(ui.el('addRepoDialog').open,true);
+  assert.equal(ui.el('importInput').value,'pallets/flask');
+  assert.equal(ui.calls.length,before,'Example must not send any request before confirmation');
+  await ui.el('importForm').listeners.submit({preventDefault(){}});
+  for(let i=0;i<5;i++)await new Promise(resolve=>setImmediate(resolve));
+  const imports=ui.calls.filter(c=>c.url==='/api/my-repos'&&c.opts.method==='POST');
+  assert.equal(imports.length,1);
+  assert.equal(JSON.parse(imports[0].opts.body).url,'pallets/flask');
+});
 test('free-tier recovery stores only a validated public name and never auto-imports',async()=>{
   const first=makeApp({active:false});await first.boot();
   assert.equal(first.el('reimportRecent').hidden,true);

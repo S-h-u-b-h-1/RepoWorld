@@ -1088,6 +1088,10 @@
       if(!e.target.closest('#repoMenuWrap'))closePopovers();
     });
     ['emptyAddRepo','addAnotherRepo'].forEach(id=>$(id).addEventListener('click',startImport));
+    $('trySampleRepo').addEventListener('click',()=>{
+      // A sample is only prefilled; the visitor still explicitly confirms before any GitHub request.
+      startImport();$('importInput').value='pallets/flask';
+    });
     $('reimportRecent').addEventListener('click',reimportRecent);
     $('saveOfflineCity').addEventListener('click',saveOfflineBackup);
     $('openOfflineCity').addEventListener('click',openOfflineBackup);
