@@ -359,3 +359,7 @@
 .source-lead-preview summary{cursor:pointer;color:#c4d5e5;padding:6px 0}
 .source-lead-preview pre{font-size:11.5px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto;padding:9px;background:#14191d;border-radius:5px}
 @media(max-width:620px){.issue-inspect-source{min-height:42px;flex:1}}
+
+/* v0.9.13: distinguish identifier observations from unverified path hints. */
+.source-lead-summary{font-size:13px;line-height:1.6;color:#bfcbd8;margin:15px 0 10px}
+.source-lead-card .source-lead-meta{font-size:13px;line-height:1.55}

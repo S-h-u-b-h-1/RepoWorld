@@ -81,3 +81,34 @@ test('browser fallback refuses fabricated model source notes without source-lead
   assert.match(notes,/No fetched source excerpts were confirmed/);
   assert.doesNotMatch(notes,/Separately fetched public source/);
 });
+
+test('full issue body takes priority over a truncated GitHub snippet',()=>{
+  const run=formatter();
+  const notes=run({graph,issue:{...issue,
+    snippet:'This is fixed for stream m',
+    body:'It is not possible to edit stream names. Update (maintainer): This is fixed for stream messages; recipients need a separate check.'}});
+  assert.match(notes,/This is fixed for stream messages/);
+  assert.match(notes,/recipients need a separate check/);
+  assert.doesNotMatch(notes,/stream m\\n/);
+});
+test('long report is shortened at a sensible boundary and never silently cut',()=>{
+  const run=formatter();
+  const report='First complete claim. '+('This issue describes navigation behavior and useful context. '.repeat(40));
+  const notes=run({graph,issue:{...issue,snippet:'Tiny clipped',body:report}});
+  assert.match(notes,/Report shortened; read the original GitHub issue/);
+  assert.ok(notes.length<6501);
+  assert.doesNotMatch(notes,/Tiny clipped/);
+});
+test('independent source notes distinguish filename hints from identifier observations',()=>{
+  const run=formatter();
+  const notes=run({graph,issue,browserFallback:true,guide:{
+    mode:'source-lead',issueVerified:false,assistantUsed:false,sourceFilesRead:2,
+    sources:[{file:'services/api/login.py',evidence:'excerpt',matchKind:'path-hint',matchedSymbols:[],
+      url:'https://github.com/testowner/demo-city/blob/HEAD/services/api/login.py#L10-L20'},
+      {file:'services/api/recipient.py',evidence:'excerpt',matchKind:'symbol',matchedSymbols:['edit_recipient'],
+      url:'https://github.com/testowner/demo-city/blob/HEAD/services/api/recipient.py#L4-L15'}]}});
+  assert.match(notes,/search candidate only; no reported identifier confirmed/);
+  assert.match(notes,/identifier text observed/);
+  assert.match(notes,/edit\\_recipient/);
+  assert.match(notes,/issue not verified/);
+});

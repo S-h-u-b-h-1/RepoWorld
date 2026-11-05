@@ -11,6 +11,21 @@
       .replace(/([*_{}\[\]()#+.!|>])/g,'\\$1')
       .replace(new RegExp(String.fromCharCode(96),'g'),String.fromCharCode(92,96));
   }
+  function reportContext(issue) {
+    // GitHub's snippet ends mid-word. Prefer the full reported body when
+    // available; copied context is still bounded and treated as untrusted text.
+    const body=clean(issue?.body||issue?.snippet||
+      'No report text available; read the original issue.',4200);
+    const limit=1200;
+    if(body.length<=limit)return markdown(body,limit);
+    const prefix=body.slice(0,limit);
+    const sentences=[...prefix.matchAll(/[.!?](?=\s|$)/g)];
+    const complete=sentences.filter(hit=>hit.index>=600).at(-1);
+    const boundary=complete?complete.index+1:prefix.lastIndexOf(' ');
+    const end=boundary>=600?boundary:limit;
+    return markdown(prefix.slice(0,end).trim(),limit)+
+      ' … [Report shortened; read the original GitHub issue for complete context.]';
+  }
   function repository(graph) {
     if(graph?.source!=='github')throw Error('Only public GitHub issue reports can be exported.');
     let url;
@@ -37,7 +52,10 @@
     let decoded;
     try{decoded=decodeURIComponent(url.pathname);}catch{return null;}
     if(!decoded.endsWith('/'+path))return null;
-    return {path,url:url.href};
+    const identifiers=entry.matchKind==='symbol'&&Array.isArray(entry.matchedSymbols)
+      ?entry.matchedSymbols.filter(s=>typeof s==='string'&&/^[A-Za-z_][A-Za-z0-9_]{1,89}$/.test(s)).slice(0,3)
+      :[];
+    return {path,url:url.href,identifiers,kind:entry.matchKind==='path-hint'?'path-hint':'other'};
   }
   function render({graph,issue,guide=null,browserFallback=false}={}) {
     const {base}=repository(graph);
@@ -56,7 +74,7 @@
       '',
       '## Reported context (unverified)'
     ];
-    const report=markdown(issue.snippet||issue.body||'No report text available; read the original issue.',470);
+    const report=reportContext(issue);
     lines.push(report || 'Read the original GitHub issue for details.');
     lines.push('','## Possible code locations');
     const known=new Set((Array.isArray(graph.nodes)?graph.nodes:[])
@@ -105,10 +123,14 @@
     lines.push('','## Source evidence');
     if(sources.length){
       for(const source of sources){
+        const qualifier=source.identifiers.length?
+          'identifier text observed ('+source.identifiers.map(s=>markdown(s,90)).join(', ')+'); issue impact unverified':
+          source.kind==='path-hint'?'search candidate only; no reported identifier confirmed':
+          'file inspected; no reported identifier confirmed';
         lines.push('- '+(browserFallback
-          ?'Separately fetched public source; issue not verified: '
-          :'Fetched source excerpt, review before citing: ')+
-          '['+markdown(source.path,260)+']('+source.url+')');
+          ?'Separately fetched public source; issue not verified'
+          :'Fetched source excerpt, review before citing')+
+          ' — '+qualifier+': ['+markdown(source.path,260)+']('+source.url+')');
       }
     }else lines.push('- No fetched source excerpts were confirmed for this issue.');
     lines.push('','Scope: '+(browserFallback?
