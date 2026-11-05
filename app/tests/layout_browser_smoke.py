@@ -30,7 +30,7 @@ def fixture_graph():
             "symbols":[],"sampled":False})
     edges=[{"source":nodes[i]["id"],"target":nodes[i+1]["id"],"type":"import"}
            for i in range(0,len(nodes)-1,5)]
-    return {"name":"Synthetic QA city — 72 modules","owner":"example",
+    return {"name":"Synthetic QA city — 72 modules","owner":"pallets",
         "url":"https://github.com/pallets/flask","branch":"HEAD",
         "source":"github","language":"Python","stars":None,
         "description":"Fictional browser QA fixture, not a live repository import.",
@@ -49,6 +49,7 @@ async def verify(browser,width,height):
                 '<script defer src="/static/world.js"></script>',
                 '<script defer src="/static/browser-radar.js"></script>',
                 '<script defer src="/static/investigation-notes.js"></script>',
+                '<script defer src="/static/offline-city.js"></script>',
                 '<script defer src="/static/app.js"></script>'):
         html=html.replace(tag,"")
     await page.set_content(html,wait_until="domcontentloaded")
@@ -67,7 +68,7 @@ async def verify(browser,width,height):
                 "scope":"Synthetic QA issue, not observed GitHub data."}
     session={"authenticated":True,"guest":True,"csrf":"fixture-only",
              "repositories":[{"id":"fixture","name":graph["name"],
-                              "owner":"example","fullName":"example/synthetic-fixture"}],
+                              "owner":"pallets","fullName":"pallets/flask"}],
              "activeRepo":"fixture","aiConfigured":False}
     await page.evaluate("""(payload)=>{
       window.__CALLS__=[];
@@ -92,6 +93,7 @@ async def verify(browser,width,height):
     })()""")
     await page.add_script_tag(content=(ROOT/"app/static/browser-radar.js").read_text())
     await page.add_script_tag(content=(ROOT/"app/static/investigation-notes.js").read_text())
+    await page.add_script_tag(content=(ROOT/"app/static/offline-city.js").read_text())
     await page.add_script_tag(content=(ROOT/"app/static/app.js").read_text())
     await page.evaluate("document.dispatchEvent(new Event('DOMContentLoaded'))")
     await page.wait_for_function("""() => window.__TEST_SCENE__?.hitAreas.length===72 &&
@@ -187,6 +189,33 @@ async def verify(browser,width,height):
     assert "No fetched source excerpts were confirmed" in notes,notes[-650:]
     assert await page.evaluate("window.__CALLS__.length")==calls_before, "Copy action triggered unexpected network call"
     await page.screenshot(path=str(OUT/f"issue-copy-notes-{width}.png"),full_page=True)
+    # Save a sanitized public map in explicit, isolated browser-local storage.
+    # The restored offline view must NOT perform any GitHub, issue, tour or AI request.
+    await page.evaluate("""() => {
+      const data=new Map();
+      Object.defineProperty(window,'localStorage',{configurable:true,value:{
+        getItem:key=>data.get(key)||null,
+        setItem:(key,value)=>data.set(key,String(value)),
+        removeItem:key=>data.delete(key)
+      }});
+    }""")
+    await page.locator("#closeIssueDrawer").click()
+    await page.locator("#repoMenuButton").click()
+    await page.locator("#saveOfflineCity").click()
+    assert await page.evaluate("localStorage.getItem('repoworld:offline-city:v1')!==null")
+    calls_before_offline=await page.evaluate("window.__CALLS__.length")
+    await page.locator("#repoMenuButton").click()
+    await page.locator("#openOfflineCityMenu").click()
+    await page.wait_for_function("document.querySelector('#cityStatusText')?.textContent?.includes('LOCAL OFFLINE PREVIEW')")
+    assert await page.evaluate("window.__CALLS__.length")==calls_before_offline
+    await page.locator("#mapCommandTrigger").click()
+    await page.locator('[data-compass-tab="find"]').click()
+    await page.locator("#searchInput").fill("frontend/module_")
+    await page.wait_for_timeout(350)
+    assert await page.locator("#searchResults .search-result").count()>0
+    assert "OFFLINE BROWSER MAP" in await page.locator("#searchScope").inner_text()
+    assert await page.evaluate("window.__CALLS__.length")==calls_before_offline
+    await page.screenshot(path=str(OUT/f"offline-city-{width}.png"),full_page=True)
     assert not errors,errors
     assert not await page.evaluate("document.documentElement.scrollWidth>innerWidth")
     print(f"PASS {width}x{height}: {metrics}; browser errors={errors}")

@@ -1,10 +1,10 @@
-/* RepoWorld v0.9.13: minimal city, source-scoped issue guide, and shareable public-repository entry points. */
+/* RepoWorld v0.9.14: minimal city, source-scoped issue guide, and shareable public-repository entry points. */
 (function(){
   'use strict';
   const $=id=>document.getElementById(id);
   const TYPES=window.REPOWORLD_DISTRICTS||{};
   const state={session:null,repos:[],activeId:null,graph:null,renderer:null,tour:null,tourIndex:-1,
-    chosen:null,layer:'structure',busy:false,toast:null,impact:null,searchTimer:null,searchRevision:0,lastFindResults:[],
+    chosen:null,layer:'structure',busy:false,offline:false,toast:null,impact:null,searchTimer:null,searchRevision:0,lastFindResults:[],
     radar:null,radarError:null,radarRevision:0,compassTab:'ask',chatHistory:[],chatBusy:false,assistantNode:null,assistantIssue:null,
     issueOpenNode:null,issueSelectedNumber:null,issueNotesResult:null,issueInsightCache:new Map(),issueInsightRevision:0};
   const esc=(s)=>String(s??'');
@@ -65,6 +65,41 @@
   function startImport(){closePopovers();setText('importError','');$('importError').hidden=true;$('importDemo').hidden=true;$('importInput').value='';
     $('addRepoDialog').showModal();setTimeout(()=>$('importInput').focus(),50);}
   function hideImport(){if(!state.busy)$('addRepoDialog').close();}
+  function readOfflineBackup(){
+    try{return window.RepoWorldOfflineCity?.read(window.localStorage)||null;}catch{return null;}
+  }
+  function saveOfflineBackup(){
+    if(state.offline||state.graph?.source!=='github'){
+      toast('Only live imported public cities can be saved for offline viewing.',true);return;
+    }
+    try{
+      window.RepoWorldOfflineCity.save(state.graph,window.localStorage);
+      closePopovers();renderRepos();
+      toast('Public city map saved in this browser. Live tools still require a server workspace.');
+    }catch(error){toast(error.message||'Browser backup unavailable.',true);}
+  }
+  async function openOfflineBackup(){
+    const backup=readOfflineBackup();
+    if(!backup){toast('No valid public-city backup is available in this browser.',true);return;}
+    closePopovers();state.activeId=null;
+    await useGraph(backup.graph,{offline:true});
+    toast('Offline map opened. Re-import the public repository for Issue Radar and AI.');
+  }
+  function reconnectOfflineBackup(){
+    if(!state.offline||state.graph?.source!=='github')return;
+    const repo=state.graph.url.replace('https://github.com/','');
+    if(!validPublicRepo(repo))return;
+    startImport();$('importInput').value=repo;
+  }
+  function clearOfflineBackup(){
+    if(!window.RepoWorldOfflineCity?.clear(window.localStorage)){
+      toast('Browser storage is blocked; the backup could not be cleared.',true);return;
+    }
+    closePopovers();
+    if(state.offline){state.activeId=null;showEmpty();document.title='RepoWorld — A city for every codebase';}
+    else renderRepos();
+    toast('Browser-only city backup cleared.');
+  }
   function reimportRecent(){
     const recent=lastPublicRepo();
     if(!recent)return;
@@ -72,6 +107,7 @@
     startImport();$('importInput').value=recent;
   }
   function showEmpty(){
+    state.offline=false;state.graph=null;
     $('workspace').classList.add('is-empty');$('emptyState').hidden=false;$('canvasStage').hidden=true;
     $('mapCommandTrigger').hidden=true;$('mapTools').hidden=true;$('cityHint').hidden=true;$('worldStatus').hidden=true;
     $('inspector').hidden=true;$('tourPanel').hidden=true;$('issueDrawer').hidden=true;$('issueMapLegend').hidden=true;state.issueInsightRevision++;
@@ -80,6 +116,9 @@
     const recent=lastPublicRepo();
     $('reimportRecent').hidden=!recent;$('recentRepoHelp').hidden=!recent;
     setText('recentRepoName',recent||'');
+    const backup=readOfflineBackup();
+    $('openOfflineCity').hidden=!backup;$('offlineRepoHelp').hidden=!backup;
+    setText('offlineRepoName',backup?backup.graph.url.replace('https://github.com/',''):'');
   }
   function showCity(){
     $('workspace').classList.remove('is-empty');$('emptyState').hidden=true;$('canvasStage').hidden=false;
@@ -87,7 +126,12 @@
   }
   function renderRepos(){
     const list=$('repoMenuItems');list.replaceChildren();
-    $('refreshCurrentRepo').hidden=!(state.graph?.source==='github');
+    const backup=readOfflineBackup();
+    $('saveOfflineCity').hidden=!(state.graph?.source==='github'&&!state.offline);
+    $('openOfflineCityMenu').hidden=!backup||state.offline;
+    $('clearOfflineCity').hidden=!backup;
+    $('reconnectOfflineCity').hidden=!state.offline;
+    $('refreshCurrentRepo').hidden=state.offline||!(state.graph?.source==='github');
     $('copyCityLink').hidden=!(state.graph?.source==='github');
     if(!state.repos.length){const p=document.createElement('p');p.className='empty-small';p.textContent='No repositories added yet.';p.style.padding='0 10px';list.append(p);return;}
     for(const repo of state.repos){
@@ -116,8 +160,9 @@
       }
     });}
   }
-  async function useGraph(graph){
+  async function useGraph(graph,{offline=false}={}){
     if(!graph?.nodes?.length){toast('This repository has no displayable modules.',true);showEmpty();return;}
+    state.offline=Boolean(offline);
     state.graph=graph;state.chosen=null;state.tour=null;state.tourIndex=-1;clearImpact();
     state.chatHistory=[];state.assistantNode=null;state.assistantIssue=null;state.radar=null;state.radarError=null;state.radarRevision++;
     $('issueFilterText').value='';$('issueFilterType').value='all';
@@ -130,10 +175,21 @@
     state.renderer.selected=null;
     $('inspector').hidden=true;$('tourPanel').hidden=true;$('mapTools').hidden=true;$('issueDrawer').hidden=true;
     setText('activeRepoTitle',graph.name);
-    setText('cityStatusText',graph.source==='demo'?'DEMO CITY':'PUBLIC GITHUB SNAPSHOT');
+    setText('cityStatusText',state.offline?'LOCAL OFFLINE PREVIEW · SAVED MAP':
+      graph.source==='demo'?'DEMO CITY':'PUBLIC GITHUB SNAPSHOT');
     setText('cityStatusCounts',`${new Set(graph.nodes.map(n=>n.kind)).size} DISTRICTS  ·  ${graph.nodes.length} BUILDINGS`);
     document.title=`${graph.name} — RepoWorld`;
     setLayer('structure');renderRepos();state.renderer.setIssueMarkers?.({});
+    if(state.offline){
+      state.radarError='Offline map preview; live GitHub issues require re-import.';
+      state.tour={mode:'guided',steps:graph.nodes.slice(0,6).map(n=>({
+        nodeId:n.id,title:n.name,description:'Stored public file-group metadata from this browser. Re-import for live source and issue updates.'
+      }))};
+      setText('assistantDisclosure','Offline map preview only. No GitHub, BharatCode or repository API calls are available until you re-import.');
+      renderIssueRadar();updateTour();
+      return;
+    }
+    setText('assistantDisclosure','Public code excerpts may be sent to BharatCode when AI is configured. Responses are suggestions, not verified code changes.');
     loadIssueRadar();
     try{state.tour=await post('/api/tour',{graph});updateTour();}catch(e){state.tour=null;}
   }
@@ -185,7 +241,8 @@
   }
   async function copyCityLink(){
     if(state.graph?.source!=='github')return;
-    const repo=state.repos.find(item=>item.id===state.activeId)?.fullName||`${state.graph.owner||''}/${state.graph.name||''}`;
+    const repo=state.offline?state.graph.url.replace('https://github.com/',''):
+      state.repos.find(item=>item.id===state.activeId)?.fullName||`${state.graph.owner||''}/${state.graph.name||''}`;
     if(!PUBLIC_REPO.test(repo)){toast('This city cannot be shared as a public GitHub link.',true);return;}
     const current=window.location;
     const origin=current?.origin, pathname=current?.pathname||'/';
@@ -205,6 +262,7 @@
     }
   }
   async function refreshCodeIndex(){
+    if(state.offline){reconnectOfflineBackup();return;}
     const url=state.graph?.url;if(!url||state.busy)return;
     state.busy=true;
     const button=$('refreshCurrentRepo');button.disabled=true;button.textContent='Refreshing code index…';
@@ -278,6 +336,7 @@
     updateTour();
   }
   async function aiTour(){
+    if(state.offline){toast('Re-import this public city to use BharatCode AI.');return;}
     if(!state.session?.aiConfigured){toast('BharatCode AI needs BHARATCODE_API_KEY on the server. The curated tour still works.');return;}
     const button=$('aiTourButton');button.disabled=true;button.textContent='Generating AI tour…';
     try{state.tour=await post('/api/ai/tour',{graph:state.graph});state.tourIndex=-1;tourStep(1);}
@@ -285,6 +344,7 @@
   }
   async function askAi(){
     const question=$('aiQuestion').value.trim();if(!question)return;
+    if(state.offline){toast('Re-import this city before using BharatCode AI.');return;}
     if(!state.session?.aiConfigured){toast('Set BHARATCODE_API_KEY on the server to ask questions.');return;}
     const button=$('askAiButton');button.disabled=true;$('aiResponse').hidden=false;setText('aiResponse','Thinking…');
     try{const answer=await post('/api/ai/ask',{graph:state.graph,question});setText('aiResponse',answer.answer||'No supported answer.');}
@@ -357,6 +417,7 @@
     setText('inspectorTrace','Clear trace');
   }
   async function traceImpact(){
+    if(state.offline){toast('Live impact tracing needs a re-imported server workspace.');return;}
     if(!state.graph||!state.chosen||!state.activeId)return;
     if(state.impact){clearImpact();setLayer('structure');return;}
     const nodeId=state.chosen;const button=$('inspectorTrace');
@@ -432,7 +493,9 @@
     $('assistantThread').scrollTop=$('assistantThread').scrollHeight;
   }
   async function sendAssistant(){
-    const question=$('assistantQuestion').value.trim();if(!question||state.chatBusy||!state.activeId)return;
+    const question=$('assistantQuestion').value.trim();
+    if(state.offline){toast('Offline preview: re-import this public city before using the assistant.');return;}
+    if(!question||state.chatBusy||!state.activeId)return;
     state.chatBusy=true;$('assistantSend').disabled=true;setText('assistantSend','Working…');
     if(!state.chatHistory.length)$('assistantThread').replaceChildren();
     assistantBubble('user',question);$('assistantQuestion').value='';
@@ -922,17 +985,33 @@
     state.renderer?.setSelected(node.id,{focus:true});renderInspector();$('inspector').scrollTop=0;
     $('inspector').hidden=false;$('tourPanel').hidden=true;
   }
+  function offlineFindModules(needle){
+    const terms=(needle.toLowerCase().match(/[a-z0-9_]{3,}/g)||[])
+      .filter(t=>!['where','what','which','the','and','does','are','for','with','from','file','code','handled'].includes(t)).slice(0,8);
+    const matchTerms=terms.length?terms:[needle.toLowerCase()];
+    const results=(state.graph?.nodes||[]).filter(node=>{
+      const paths=[node.id,node.path,node.name,...(node.files||[]).slice(0,16)];
+      const names=(node.symbols||[]).slice(0,12).map(s=>s.name);
+      const value=[...paths,...names].join(' ').toLowerCase();
+      return matchTerms.some(term=>value.includes(term));
+    }).slice(0,12).map(node=>({
+      nodeId:node.id,name:node.name,path:node.path,kind:node.kind,
+      files:(node.files||[]).slice(0,4),symbols:(node.symbols||[]).slice(0,4)
+    }));
+    return {results,scope:'OFFLINE BROWSER MAP · Paths and sampled names only; not live source search.'};
+  }
   async function searchModules(query){
     clearTimeout(state.searchTimer);const serial=++state.searchRevision;
     const needle=esc(query).trim();
     const parent=$('searchResults');parent.replaceChildren();state.lastFindResults=[];
     $('searchWelcome').hidden=Boolean(needle);
-    if(!state.graph||!state.activeId||needle.length<2){return;}
+    if(!state.graph||(!state.activeId&&!state.offline)||needle.length<2){return;}
     // Never dispatch a request for every keystroke; ignore stale responses.
     const loading=document.createElement('p');loading.className='empty-small';loading.textContent='Searching imported code paths…';parent.append(loading);
     state.searchTimer=setTimeout(async()=>{
       try{
-        const data=await api(`/api/my-repos/${encodeURIComponent(state.activeId)}/find?q=${encodeURIComponent(needle)}`);
+        const data=state.offline?offlineFindModules(needle):
+          await api(`/api/my-repos/${encodeURIComponent(state.activeId)}/find?q=${encodeURIComponent(needle)}`);
         if(serial!==state.searchRevision||!$('searchDialog').open)return;
         parent.replaceChildren();state.lastFindResults=data.results||[];
         for(const [i,item] of state.lastFindResults.entries()){
@@ -960,6 +1039,11 @@
     });
     ['emptyAddRepo','addAnotherRepo'].forEach(id=>$(id).addEventListener('click',startImport));
     $('reimportRecent').addEventListener('click',reimportRecent);
+    $('saveOfflineCity').addEventListener('click',saveOfflineBackup);
+    $('openOfflineCity').addEventListener('click',openOfflineBackup);
+    $('openOfflineCityMenu').addEventListener('click',openOfflineBackup);
+    $('reconnectOfflineCity').addEventListener('click',reconnectOfflineBackup);
+    $('clearOfflineCity').addEventListener('click',clearOfflineBackup);
     $('refreshCurrentRepo').addEventListener('click',refreshCodeIndex);
     $('copyCityLink').addEventListener('click',copyCityLink);
     $('closeImport').addEventListener('click',hideImport);
