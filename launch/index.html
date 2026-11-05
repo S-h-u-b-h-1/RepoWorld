@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#080d15">
+  <meta name="description" content="RepoWorld turns public GitHub repositories into explorable 3D cities. A free, read-only developer tool.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' https://repoworld-3b9e.onrender.com; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'">
+  <title>Opening RepoWorld — The City of Code</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="preload" as="image" href="./city.png">
+  <link rel="stylesheet" href="./style.css">
+  <script defer src="./launch.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="RepoWorld launch page">
+        <span class="logo-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span>REPOWORLD <i></i> THE CITY OF CODE</span>
+      </a>
+      <span class="top-note">PUBLIC GITHUB REPOSITORIES <b>·</b> NO SIGN-IN</span>
+    </header>
+    <main>
+      <section class="hero" aria-labelledby="hero-heading">
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="tiny-dot"></span> FREE INTERACTIVE DEVELOPER EXPLORER</div>
+          <h1 id="hero-heading">Every repository<br>has a <em>world</em> inside.</h1>
+          <p class="lede">Walk through architecture as a 3D city. Follow sampled source imports, explore modules, and investigate reported issues—with evidence clearly separated from suggestions.</p>
+          <div class="ready-panel" aria-label="Live app readiness">
+            <div class="status-icon" id="statusIcon" aria-hidden="true"><span></span></div>
+            <div class="status-copy">
+              <strong id="statusHeadline" role="status" aria-live="polite">Connecting to the live city…</strong>
+              <p id="statusDetail">Waking the free application. The city opens automatically when the server responds.</p>
+            </div>
+          </div>
+          <div class="actions">
+            <a id="openDirect" class="primary-action" href="https://repoworld-3b9e.onrender.com/">Open live explorer <span aria-hidden="true">↗</span></a>
+            <button type="button" id="retry" class="secondary-action" hidden>Try connecting again</button>
+          </div>
+          <p class="footnote">Render Free can sleep when idle. This launch page loads instantly while the backend starts. Saved guest sessions on the free backend may reset after inactivity.</p>
+        </div>
+        <div class="hero-media" aria-label="Example of RepoWorld's 3D city visualization">
+          <div class="image-border">
+            <img class="city-image" src="./city.png" alt="Illustrative RepoWorld city visual fixture with glowing districts and module buildings" width="1440" height="900">
+            <div class="image-caption"><span class="caption-indicator"></span> ILLUSTRATIVE CITY / VISUAL TEST FIXTURE</div>
+          </div>
+          <div class="floating-tag" aria-hidden="true"><span>◈</span> Your code. A new perspective.</div>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <span>REPOWORLD / READ-ONLY EXPLORATION</span>
+      <a href="https://github.com/S-h-u-b-h-1/RepoWorld" rel="noopener noreferrer">VIEW SOURCE <span aria-hidden="true">↗</span></a>
+    </footer>
+  </div>
+</body>
+</html>
