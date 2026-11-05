@@ -17,7 +17,7 @@ The launcher preserves only validated public `?repo=owner%2Frepo` parameters. It
 3. Click buildings to inspect modules, sampled declarations and import connections. Open **Explore code** (or `⌘ K`) to locate code, ask questions, and browse open issues.
 4. Click an issue marker to open its original report and a source-scoped investigation. The assistant proposes where to inspect, not an automatically verified fix.
 
-There is **no login**, GitHub OAuth, or Google signup. Each browser receives an anonymous HttpOnly session cookie. Existing browsers may preserve previously imported public snapshots for 14 days (unless the cookie is cleared). Switching devices or losing the cookie loses access to those saved cities. This is a demonstration, not an account system; never use it for sensitive or private repositories.
+There is **no login**, GitHub OAuth, or Google signup. After a successful import, the browser also saves **only the most recent validated public owner/repo name** in localStorage. If the free server loses its temporary city after a restart, the empty screen can offer a **Re-import** shortcut; it opens the ordinary confirmation dialog and does not restore the old snapshot, fetch GitHub automatically, retain source code locally, or bypass import quotas. Clear this site's browser storage to erase that shortcut. Each browser receives an anonymous HttpOnly session cookie. Existing browsers may preserve previously imported public snapshots for 14 days (unless the cookie is cleared). Switching devices or losing the cookie loses access to those saved cities. This is a demonstration, not an account system; never use it for sensitive or private repositories.
 
 ## New in v0.9.6 — public launch hardening (no UI changes)
 

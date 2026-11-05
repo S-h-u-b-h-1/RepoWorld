@@ -15,10 +15,21 @@
   // Share links encode only a public owner/repo name. They never contain a guest
   // session, CSRF value, server credential, saved-city ID, or source excerpt.
   const PUBLIC_REPO=/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\/[A-Za-z0-9_.-]{1,100}$/;
+  const LAST_PUBLIC_REPO_KEY='repoworld:last-public-repo:v1';
+  const validPublicRepo=value=>typeof value==='string'&&value.length<=150&&PUBLIC_REPO.test(value)&&!['.','..'].includes(value.split('/')[1]);
+  function lastPublicRepo(){
+    try{const value=window.localStorage?.getItem(LAST_PUBLIC_REPO_KEY)||'';return validPublicRepo(value)?value:null;}
+    catch{return null;}
+  }
+  function rememberPublicRepo(value){
+    if(!validPublicRepo(value))return;
+    // Store one PUBLIC name, never source graphs, cookies, CSRF, or provider keys.
+    try{window.localStorage?.setItem(LAST_PUBLIC_REPO_KEY,value);}catch{/* Storage can be disabled; imports still work. */}
+  }
   const deepLinkedRepo=()=>{
     try{
       const value=new URLSearchParams(window.location?.search||'').get('repo')||'';
-      return value.length<=150&&PUBLIC_REPO.test(value)&&!['.','..'].includes(value.split('/')[1])?value:null;
+      return validPublicRepo(value)?value:null;
     }catch{return null;}
   };
   const kindLabel=k=>TYPES[k]?.name||names[k]||'Core Nexus';
@@ -54,12 +65,21 @@
   function startImport(){closePopovers();setText('importError','');$('importError').hidden=true;$('importDemo').hidden=true;$('importInput').value='';
     $('addRepoDialog').showModal();setTimeout(()=>$('importInput').focus(),50);}
   function hideImport(){if(!state.busy)$('addRepoDialog').close();}
+  function reimportRecent(){
+    const recent=lastPublicRepo();
+    if(!recent)return;
+    // Explicit confirmation is still required before spending GitHub quota.
+    startImport();$('importInput').value=recent;
+  }
   function showEmpty(){
     $('workspace').classList.add('is-empty');$('emptyState').hidden=false;$('canvasStage').hidden=true;
     $('mapCommandTrigger').hidden=true;$('mapTools').hidden=true;$('cityHint').hidden=true;$('worldStatus').hidden=true;
     $('inspector').hidden=true;$('tourPanel').hidden=true;$('issueDrawer').hidden=true;$('issueMapLegend').hidden=true;state.issueInsightRevision++;
     state.radar=null;state.radarError=null;state.radarRevision++;state.renderer?.setIssueMarkers?.({});
     setText('activeRepoTitle','RepoWorld');renderRepos();
+    const recent=lastPublicRepo();
+    $('reimportRecent').hidden=!recent;$('recentRepoHelp').hidden=!recent;
+    setText('recentRepoName',recent||'');
   }
   function showCity(){
     $('workspace').classList.remove('is-empty');$('emptyState').hidden=true;$('canvasStage').hidden=false;
@@ -118,6 +138,7 @@
       const stored=await api('/api/my-repos/'+encodeURIComponent(id));
       if(old!==id)await post('/api/me/active',{repoId:id});
       state.activeId=id;await useGraph(stored.graph);
+      rememberPublicRepo(state.repos.find(item=>item.id===id)?.fullName);
     }catch(e){toast(e.message,true);}
   }
   async function importRepository(value){
@@ -132,6 +153,7 @@
     try{
       const result=await post('/api/my-repos',{url:raw});
       await refreshSession();state.activeId=result.id;
+      rememberPublicRepo(state.repos.find(item=>item.id===result.id)?.fullName);
       $('addRepoDialog').close();await useGraph(result.graph);
       toast(`${result.graph.name} is ready. Drag the city to explore.`);
     }catch(e){setText('importError',e.message);$('importError').hidden=false;
@@ -748,6 +770,7 @@
       if(!e.target.closest('#repoMenuWrap'))closePopovers();
     });
     ['emptyAddRepo','addAnotherRepo'].forEach(id=>$(id).addEventListener('click',startImport));
+    $('reimportRecent').addEventListener('click',reimportRecent);
     $('refreshCurrentRepo').addEventListener('click',refreshCodeIndex);
     $('copyCityLink').addEventListener('click',copyCityLink);
     $('closeImport').addEventListener('click',hideImport);
