@@ -64,10 +64,10 @@
     pendingTimeout=window.setTimeout(failed,PROBE_TIMEOUT_MS);
     image.onload=finished;
     image.onerror=failed;
-    // Valid SVG image loading is a real availability signal without needing
-    // cross-origin response access, secret reads, or a GitHub API request.
-    // Browsers may attach existing backend cookies; we do not read them.
-    image.src=BACKEND_ORIGIN+'/static/favicon.svg?launcher='+Date.now()+'-'+tries;
+    // Only the live backend readiness endpoint can return a loadable SVG;
+    // this avoids redirecting when static assets work but SQLite is unready.
+    // Browsers may attach existing backend cookies; we never read them.
+    image.src=BACKEND_ORIGIN+'/api/ready.svg?launcher='+Date.now()+'-'+tries;
   }
   retry.addEventListener('click',()=>{cancelProbe();tries=0;probe();});
   window.addEventListener('pagehide',cancelProbe,{once:true});

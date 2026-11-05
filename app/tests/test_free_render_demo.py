@@ -31,6 +31,10 @@ async def test_free_demo_ready_without_secret_and_labeled_fallback(monkeypatch,t
         ready=await client.get('/api/ready')
         assert ready.status_code==200,ready.text
         assert ready.json()['ready'] is True
+        image=await client.get('/api/ready.svg')
+        assert image.status_code==200 and image.headers['content-type'].startswith('image/svg+xml')
+        assert image.headers['cache-control']=='no-store'
+        assert '<svg ' in image.text and '</svg>' in image.text
         session=await client.get('/api/session')
         assert session.status_code==200,session.text
         assert session.json()['aiConfigured'] is False
@@ -53,6 +57,10 @@ async def test_free_demo_does_not_relax_origin_or_mount_guard(monkeypatch,tmp_pa
         assert denied.status_code==403
         monkeypatch.setenv('REPOWORLD_REQUIRE_MOUNTED_DB','1')
         assert (await client.get('/api/ready')).status_code==503
+        blocked_image=await client.get('/api/ready.svg')
+        assert blocked_image.status_code==503
+        assert 'image/svg+xml' not in blocked_image.headers.get('content-type','')
         monkeypatch.setenv('REPOWORLD_REQUIRE_MOUNTED_DB','0')
         monkeypatch.delenv('REPOWORLD_EPHEMERAL_DEMO')
         assert (await client.get('/api/ready')).status_code==503
+        assert (await client.get('/api/ready.svg')).status_code==503

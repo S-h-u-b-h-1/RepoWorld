@@ -56,11 +56,12 @@ test('launch page is self-contained and has direct access even without JavaScrip
   assert.match(CSS,/@media\(prefers-reduced-motion:reduce\)/);
 });
 
-test('probes only the static favicon and redirects after a real image load',()=>{
+test('probes actual backend readiness and redirects only after the SVG loads',()=>{
   const page=launch('?repo=pallets%2Fflask');
   assert.equal(page.images.length,1);
   assert.equal(page.images[0].referrerPolicy,'no-referrer');
-  assert.ok(page.images[0].src.startsWith(BACKEND+'/static/favicon.svg?launcher='));
+  assert.ok(page.images[0].src.startsWith(BACKEND+'/api/ready.svg?launcher='));
+  assert.ok(!page.images[0].src.includes('/static/favicon.svg'));
   assert.ok(page.el.get('openDirect').href.includes('repo=pallets%2Fflask'));
   assert.equal(page.redirects.length,0);
   page.images[0].onload();
