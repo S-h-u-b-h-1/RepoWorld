@@ -362,17 +362,19 @@
         }
         if(!afterPinch&&this.isDragging&&this.dragDistance<6){
           const r=this.canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
-          const issue=this.getIssueHit(x,y);
-          if(issue){if(this.tooltip)this.tooltip.hidden=true;this.setSelected(issue.nodeId,{focus:false});this.onIssueSelect(issue.nodeId);}
-          else {
-            const plaque=this.getDistrictHit(x,y);
-            if(plaque){
-              if(this.tooltip)this.tooltip.hidden=true;
-              this.focusDistrict(plaque.kind);this.onDistrictSelect(plaque.kind);
-            }else{
-              const hit=this.getHit(x,y);
-              if(hit){this.setSelected(hit.id,{focus:false});this.onSelect(hit.id);}
-            }
+          const plaque=this.getDistrictHit(x,y),issue=this.getIssueHit(x,y);
+          // The 26px issue hit target must not steal a visible district label.
+          // The painted 13.5px badge itself still takes precedence.
+          const onIssueBadge=issue&&Math.hypot(issue.x-x,issue.y-y)<=14.5;
+          if(plaque&&!onIssueBadge){
+            if(this.tooltip)this.tooltip.hidden=true;
+            this.focusDistrict(plaque.kind);this.onDistrictSelect(plaque.kind);
+          }else if(issue){
+            if(this.tooltip)this.tooltip.hidden=true;
+            this.setSelected(issue.nodeId,{focus:false});this.onIssueSelect(issue.nodeId);
+          }else{
+            const hit=this.getHit(x,y);
+            if(hit){this.setSelected(hit.id,{focus:false});this.onSelect(hit.id);}
           }
         }
         this.isDragging=false;
@@ -419,7 +421,12 @@
     getHit(x,y){const hits=this.hitAreas.filter(h=>x>=h.x1&&x<=h.x2&&y>=h.y1&&y<=h.y2);return hits.sort((a,b)=>a.depth-b.depth)[0]?.node||null;}
     getDistrictHit(x,y){return this.districtHitAreas.find(p=>x>=p.x1&&x<=p.x2&&y>=p.y1&&y<=p.y2)||null;}
     updateHover(x,y){
-      const pin=this.getIssueHit(x,y);
+      const plaque=this.getDistrictHit(x,y),pin=this.getIssueHit(x,y);
+      if(plaque&&(!pin||Math.hypot(pin.x-x,pin.y-y)>14.5)){
+        this.hovered=null;this.canvas.style.cursor='pointer';
+        if(this.tooltip)this.tooltip.hidden=true;
+        this.onHover(null);return;
+      }
       if(pin){
         this.hovered=pin.nodeId;
         this.canvas.style.cursor='pointer';
@@ -435,11 +442,6 @@
           this.tooltip.style.left=clamp(x+15,7,this.width-255)+'px';this.tooltip.style.top=clamp(y-58,7,this.height-75)+'px';
         }
         this.onHover(this.hovered);return;
-      }
-      if(this.getDistrictHit(x,y)){
-        this.hovered=null;this.canvas.style.cursor='pointer';
-        if(this.tooltip)this.tooltip.hidden=true;
-        this.onHover(null);return;
       }
       const hit=this.getHit(x,y);this.hovered=hit?.id||null;
       if(hit&&this.tooltip){

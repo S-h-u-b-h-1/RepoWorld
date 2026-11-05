@@ -121,9 +121,18 @@ async def verify(browser,width,height):
     plaque=await page.evaluate("window.__TEST_SCENE__.districtHitAreas.find(p=>p.kind==='api')")
     assert plaque,"API district plaque missing"
     rect=await page.locator("#worldCanvas").bounding_box()
-    await page.mouse.click(rect["x"]+(plaque["x1"]+plaque["x2"])/2,
-                           rect["y"]+(plaque["y1"]+plaque["y2"])/2)
-    await page.wait_for_function("window.__TEST_SCENE__.activeDistrict==='api'")
+    x=(plaque["x1"]+plaque["x2"])/2
+    y=(plaque["y1"]+plaque["y2"])/2
+    debug=await page.evaluate("""({x,y})=>{
+      const r=window.__TEST_SCENE__,pin=r.getIssueHit(x,y),label=r.getDistrictHit(x,y);
+      const rect=document.querySelector('#worldCanvas').getBoundingClientRect();
+      return {label:label?.kind,pin:pin?.nodeId,
+        onPaintedPin:pin?Math.hypot(pin.x-x,pin.y-y)<=14.5:false,
+        domTarget:document.elementFromPoint(rect.left+x,rect.top+y)?.id||''};
+    }""",{"x":x,"y":y})
+    await page.mouse.click(rect["x"]+x,rect["y"]+y)
+    actual=await page.evaluate("window.__TEST_SCENE__.activeDistrict")
+    assert actual=="api",("District plaque click failed",width,debug,actual)
     await page.wait_for_timeout(400)
     await page.screenshot(path=str(OUT/f"district-focused-{width}.png"),full_page=True)
 
