@@ -237,6 +237,13 @@
     $('inspector').hidden=false;$('tourPanel').hidden=true;$('mapTools').hidden=true;
   }
   function zoomCity(factor){state.renderer?.zoomToward?.(factor);}
+  function browseBuildings(step){
+    const next=state.renderer?.cycleModule?.(step);
+    if(!next){toast('No imported modules to explore.');return;}
+    hideIssueDrawer();clearImpact();
+    state.chosen=next.id;renderInspector();$('inspector').scrollTop=0;
+    $('inspector').hidden=false;$('tourPanel').hidden=true;$('mapTools').hidden=true;
+  }
   function setLayer(layer){
     state.layer=layer;state.renderer?.setMode(layer);
     document.querySelectorAll('[data-layer]').forEach(b=>b.classList.toggle('active',b.dataset.layer===layer));
@@ -838,6 +845,8 @@
     $('resetCamera').addEventListener('click',()=>{state.renderer?.resetCamera();$('mapTools').hidden=true;});
     $('districtJump').addEventListener('change',jumpDistrict);
     $('focusHub').addEventListener('click',focusConnectedHub);
+    $('previousBuilding').addEventListener('click',()=>browseBuildings(-1));
+    $('nextBuilding').addEventListener('click',()=>browseBuildings(1));
     $('zoomOut').addEventListener('click',()=>zoomCity(1.25));
     $('zoomIn').addEventListener('click',()=>zoomCity(.8));
     $('tourButton').addEventListener('click',openTour);

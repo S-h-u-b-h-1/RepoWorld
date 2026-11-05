@@ -10,6 +10,10 @@ Use **https://repoworld-launch.onrender.com** as the first-visit and hackathon e
 
 The launcher preserves only validated public `?repo=owner%2Frepo` parameters. It never reads or stores session cookies, CSRF values, private code, or BharatCode secrets; browsers may automatically attach an existing backend cookie to its image readiness request. This improves first paint and honest cold-start feedback; **it does not eliminate Render Free's backend spin-up delay or ephemeral data loss**. The interactive explorer, GitHub importer, and AI assistant remain on the existing Python service. Static launch tests are part of GitHub CI.
 
+## Building-by-building exploration
+
+The temporary **Explore code → Map views · More** panel has **Previous building** and **Next building** controls. They cycle deterministically through real imported module buildings and open the existing inspector. When the city canvas is focused, use **[** and **]** to navigate without a mouse. The ordering uses district, name and stable module IDs; it does not invent files or run code.
+
 ## City layout reliability and mobile responsiveness
 
 Dense repositories use spacing derived from the **actual displayed building widths**, so source-module towers and floating district footprints do not overlap in map coordinates. A bounded square-spiral wraps crowded central code districts around the non-source landmark. Overview and district focus cameras fit the calculated bounds; decorative scenery avoids real buildings. Small-scale façades skip sub-pixel windows and idle/mobile rendering is frame-rate limited. These optimizations do **not** add code links, infer new source evidence, or imply exact runtime topology.

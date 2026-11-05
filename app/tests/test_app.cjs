@@ -85,6 +85,7 @@ function makeApp({authenticated=true,active=true,assistantResult=null,multipleIs
     getDistricts(){return [{kind:'frontend',name:'Frontend Boulevard',count:1},{kind:'api',name:'API Heights',count:1}];}
     focusDistrict(kind){this.focusedDistrict=kind;return true;}
     focusHotspot(){this.selected='api';this.mode='hotspots';return GRAPH.nodes[1];}
+    cycleModule(step){this.cycles=(this.cycles||[]).concat(step);const node=GRAPH.nodes[step>0?0:1];this.selected=node.id;return node;}
     zoomToward(factor){this.zoomFactor=factor;}
     setIssueMarkers(data){this.issueMarkers=data;}
     setSelected(id){this.selected=id;}
@@ -542,4 +543,21 @@ test('Issue Radar local search and categories filter only sampled records withou
   ui.el('issueFilterType').value='all';ui.el('issueFilterType').listeners.change();
   assert.equal(ui.el('issueList').children.length,2);
   assert.equal(ui.calls.length,count);
+});
+
+
+test('map controls browse actual buildings, open the inspector and preserve source graph',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  ui.el('mapCommandTrigger').listeners.click();
+  ui.el('showMapOptions').listeners.click();
+  ui.el('nextBuilding').listeners.click();
+  assert.equal(ui.renderer.selected,'web');
+  assert.equal(ui.el('inspector').hidden,false);
+  assert.equal(ui.el('inspectorName').textContent,'Web');
+  ui.el('showMapOptions').listeners.click();
+  ui.el('previousBuilding').listeners.click();
+  assert.equal(ui.renderer.selected,'api');
+  assert.equal(ui.el('inspectorName').textContent,'API');
+  assert.deepEqual(Array.from(ui.renderer.cycles),[1,-1]);
+  assert.equal(ui.renderer.graph.edges.length,GRAPH.edges.length);
 });

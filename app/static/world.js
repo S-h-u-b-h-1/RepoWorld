@@ -208,6 +208,21 @@
       const target=this.getHotspots()[0];if(!target)return null;
       this.setMode('hotspots');this.setSelected(target.id,{focus:true});return target;
     }
+    cycleModule(direction=1){
+      if(!this.nodes.length)return null;
+      // Stable, bounded walk through ACTUAL imported module IDs.
+      const sorted=[...this.nodes].sort((a,b)=>
+        DISTRICT_ORDER.indexOf(a.kind)-DISTRICT_ORDER.indexOf(b.kind)||
+        String(a.name).localeCompare(String(b.name))||
+        String(a.id).localeCompare(String(b.id)));
+      const current=sorted.findIndex(n=>n.id===this.selected);
+      const step=direction<0?-1:1;
+      const next=current<0?(step>0?0:sorted.length-1):
+        (current+step+sorted.length)%sorted.length;
+      const node=sorted[next];
+      this.setSelected(node.id,{focus:true});
+      return node;
+    }
     fitOverviewDistance(){
       if(!this.districts.length)return 140;
       const old={distance:this.distance,yaw:this.yaw,pitch:this.pitch,pan:this.pan};
@@ -370,7 +385,12 @@
         this.zoomToward(Math.exp(logFactor),e.clientX-rect.left,e.clientY-rect.top);
       },{passive:false});
       this.canvas.addEventListener('keydown',e=>{
-        if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-','Home','Enter'].includes(e.key))e.preventDefault();
+        if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-','Home','Enter','[',']'].includes(e.key))e.preventDefault();
+        if(e.key==='['||e.key===']'){
+          const next=this.cycleModule(e.key===']'?1:-1);
+          if(next)this.onSelect(next.id);
+          return;
+        }
         if(e.key==='ArrowLeft')this.yaw-=.14;
         if(e.key==='ArrowRight')this.yaw+=.14;
         if(e.key==='ArrowUp')this.pitch=clamp(this.pitch+.1,.57,1.11);
