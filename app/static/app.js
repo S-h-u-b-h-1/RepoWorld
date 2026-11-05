@@ -1,4 +1,4 @@
-/* RepoWorld v0.9.8: minimal city, source-scoped issue guide, and shareable public-repository entry points. */
+/* RepoWorld v0.9.9: minimal city, source-scoped issue guide, and shareable public-repository entry points. */
 (function(){
   'use strict';
   const $=id=>document.getElementById(id);

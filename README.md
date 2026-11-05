@@ -1,8 +1,8 @@
-# RepoWorld v0.9.8 — The City of Code
+# RepoWorld v0.9.9 — The City of Code
 
 **RepoWorld is a read-only, sign-in-free tool for exploring public GitHub repositories as interactive 3D cities.** Districts are groups of source files; buildings represent modules; illuminated links represent sampled **static imports**, not runtime traffic. Issue Radar displays GitHub's reported open issues as referenced, suggested, or unplaced locations. An optional BharatCode assistant helps developers investigate code and plan safe next steps.
 
-**Status:** Public source: https://github.com/S-h-u-b-h-1/RepoWorld. Free hosted site: https://repoworld-3b9e.onrender.com. The source's v0.9.8 Issue Radar fallback is tested locally and in mocked browsers; the public host and real GitHub API behavior must be checked separately after each deployment. No hackathon submission is claimed.
+**Status:** Public source: https://github.com/S-h-u-b-h-1/RepoWorld. Free hosted site: https://repoworld-3b9e.onrender.com. The v0.9.8 Issue Radar fallback and v0.9.9 visual/navigation updates are CI-tested and in mocked browsers; the public host and real GitHub API behavior must be checked separately after each deployment. No hackathon submission is claimed.
 
 ## Fast free launch page (static CDN)
 
