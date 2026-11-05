@@ -236,9 +236,11 @@ async def verify(browser,width,height):
     assert await page.locator('#emptyState').is_visible()
     count_before_restore=await page.evaluate("window.__CALLS__.length")
     await page.locator('#offlineCityFile').set_input_files(str(archive_path))
-    await page.wait_for_function("document.querySelector('#cityStatusText')?.textContent?.includes('LOCAL OFFLINE PREVIEW')")
+    # Avoid a stale hidden status label from the previously cleared map: file
+    # text() and the safe restore path complete asynchronously.
+    await page.wait_for_function("window.localStorage.getItem('repoworld:offline-city:v1')!==null",timeout=10000)
+    await page.wait_for_function("!document.querySelector('#canvasStage').hidden && document.querySelector('#cityStatusText')?.textContent?.includes('LOCAL OFFLINE PREVIEW')",timeout=10000)
     assert await page.evaluate("window.__CALLS__.length")==count_before_restore
-    assert await page.evaluate("window.localStorage.getItem('repoworld:offline-city:v1')!==null")
     await page.screenshot(path=str(OUT/f"portable-city-restored-{width}.png"),full_page=True)
     assert not errors,errors
     assert not await page.evaluate("document.documentElement.scrollWidth>innerWidth")

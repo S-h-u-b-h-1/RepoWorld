@@ -156,6 +156,7 @@
   }
   function showEmpty(){
     state.offline=false;state.graph=null;
+    setText('cityStatusText','CITY READY');
     $('workspace').classList.add('is-empty');$('emptyState').hidden=false;$('canvasStage').hidden=true;
     $('mapCommandTrigger').hidden=true;$('mapTools').hidden=true;$('cityHint').hidden=true;$('worldStatus').hidden=true;
     $('inspector').hidden=true;$('tourPanel').hidden=true;$('issueDrawer').hidden=true;$('issueMapLegend').hidden=true;state.issueInsightRevision++;
