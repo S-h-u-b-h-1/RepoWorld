@@ -102,7 +102,7 @@ async def main():
                   'url':'https://github.com/pallets/flask','branch':'HEAD'})
     OUT.mkdir(exist_ok=True)
     async with async_playwright() as pw:
-        browser=await pw.chromium.launch(headless=True,args=['--no-sandbox'])
+        browser=await pw.chromium.launch(channel='chrome',headless=True,args=['--no-sandbox'])
         for w,h in [(1440,900),(390,844)]:
             page=await browser.new_page(viewport={'width':w,'height':h})
             await check(page,graph)

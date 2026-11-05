@@ -249,7 +249,7 @@ async def verify(browser,width,height):
 async def main():
     OUT.mkdir(parents=True,exist_ok=True)
     async with async_playwright() as p:
-        browser=await p.chromium.launch(headless=True,args=["--no-sandbox"])
+        browser=await p.chromium.launch(channel="chrome",headless=True,args=["--no-sandbox"])
         for width,height in [(1440,900),(390,844)]:
             await verify(browser,width,height)
         await browser.close()
