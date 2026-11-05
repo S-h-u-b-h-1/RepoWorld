@@ -640,7 +640,7 @@ test('browser-only issue allows explicit public source lookup without claiming i
   ui.el('issueList').children[0].children[0].children[0].listeners.click();
   assert.equal(ui.el('issueInspectSource').hidden,false);
   assert.equal(ui.calls.filter(x=>x.url.endsWith('/source-lead')).length,0);
-  assert.match(ui.el('issueAiResult').textContent,/not.*verified/i);
+  assert.match(ui.el('issueAiResult').textContent,/not independently checked/i);
   await ui.el('issueInspectSource').listeners.click();
   const lookups=ui.calls.filter(x=>x.url.endsWith('/source-lead'));
   assert.equal(lookups.length,1);
