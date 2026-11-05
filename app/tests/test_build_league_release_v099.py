@@ -24,7 +24,8 @@ def test_build_league_source_gate_and_missing_manifest(tmp_path):
     assert any('BharatCode.txt' in problem for problem in check_repo(tmp_path))
 
 
-def hosted_transport(*,model_mode='ai',evidence=True,configured=True):
+def hosted_transport(*,model_mode='ai',evidence=True,configured=True,
+                     issue_response=200,issue_error='GitHub issue API rate limit reached.'):
     requests=[]
     def handler(req):
         requests.append((req.method,req.url.path))
@@ -50,7 +51,8 @@ def hosted_transport(*,model_mode='ai',evidence=True,configured=True):
             assert req.headers.get('x-repoworld-csrf')=='example-csrf'
             return httpx.Response(200,json={'id':'test-city','graph':{'nodes':[{'id':'src'}]}})
         if path=='/api/my-repos/test-city/issues':
-            return httpx.Response(200,json={'issues':[]})
+            return (httpx.Response(issue_response,json={'issues':[]})
+                    if issue_response==200 else httpx.Response(issue_response,json={'error':issue_error}))
         if path=='/api/my-repos/test-city/assistant' and req.method=='POST':
             assert req.headers.get('x-repoworld-csrf')=='example-csrf'
             return httpx.Response(200,json={'mode':model_mode,'model':'qwen-3.8-27b' if model_mode=='ai' else None,
@@ -83,3 +85,25 @@ def test_hosted_smoke_refuses_fake_ai_fallback_and_weak_source_proof():
             transport=transport,verify_live_ai=True,require_source_evidence=True)
     with pytest.raises(ValueError,match='require --import-repo'):
         run('http://127.0.0.1:8004',allow_local=True,verify_live_ai=True)
+
+
+def test_provider_specific_issue_429_does_not_block_explicit_ai_smoke():
+    transport,calls=hosted_transport(issue_response=429)
+    with pytest.raises(RuntimeError,match='GitHub Issue Radar'):
+        run('http://127.0.0.1:8004',import_repo='pallets/flask',
+            allow_local=True,transport=transport,verify_live_ai=True)
+    transport,calls=hosted_transport(issue_response=429)
+    notes=run('http://127.0.0.1:8004',import_repo='pallets/flask',allow_local=True,
+              transport=transport,verify_live_ai=True,require_source_evidence=True,
+              allow_browser_issues_fallback=True)
+    assert any('provider-rate-limited' in x for x in notes)
+    assert any('real model response' in x for x in notes)
+    assert sum(p.endswith('/assistant') for _,p in calls)==1
+
+
+def test_guest_quota_429_is_never_ignored_by_provider_fallback_flag():
+    transport,calls=hosted_transport(issue_response=429,issue_error='Too many requests. Try again shortly.')
+    with pytest.raises(RuntimeError,match='Only GitHub provider'):
+        run('http://127.0.0.1:8004',import_repo='pallets/flask',allow_local=True,
+            transport=transport,verify_live_ai=True,allow_browser_issues_fallback=True)
+    assert not any(path.endswith('/assistant') for _,path in calls)

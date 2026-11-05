@@ -1,0 +1,73 @@
+name: RepoWorld Hosted Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Verification depth; AI requests only in ai/evidence modes"
+        type: choice
+        required: true
+        default: basic
+        options:
+          - basic
+          - import
+          - ai
+          - evidence
+      repository:
+        description: "Public GitHub owner/repo to use for import, AI and evidence modes"
+        type: string
+        default: pallets/flask
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  hosted-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Wake and verify free Render backend readiness
+        run: |
+          python - <<'PY'
+          import httpx
+          import time
+          url='https://repoworld-3b9e.onrender.com/api/ready'
+          for attempt in range(8):
+              try:
+                  r=httpx.get(url,timeout=45,follow_redirects=False)
+                  if r.status_code==200 and r.json().get('ready') is True:
+                      print('PASS Render backend readiness')
+                      break
+              except (httpx.HTTPError, ValueError):
+                  pass
+              if attempt<7:
+                  print('Render Free backend not ready; retrying cold start.')
+                  time.sleep(10)
+          else:
+              raise SystemExit('FAIL Render backend not ready; no provider calls attempted.')
+          PY
+      - name: Run explicit hosted verification
+        shell: bash
+        env:
+          RUN_MODE: ${{ inputs.mode }}
+          PUBLIC_REPO: ${{ inputs.repository }}
+        run: |
+          set -euo pipefail
+          flags=()
+          case "$RUN_MODE" in
+            basic) ;;
+            import)
+              flags+=(--import-repo "$PUBLIC_REPO" --allow-browser-issues-fallback) ;;
+            ai)
+              flags+=(--import-repo "$PUBLIC_REPO" --allow-browser-issues-fallback --verify-live-ai) ;;
+            evidence)
+              flags+=(--import-repo "$PUBLIC_REPO" --allow-browser-issues-fallback --verify-live-ai --require-source-evidence) ;;
+            *) echo 'Invalid mode' >&2; exit 2 ;;
+          esac
+          python scripts/smoke_hosted.py https://repoworld-3b9e.onrender.com "${flags[@]}"
