@@ -657,7 +657,7 @@
       state.issueNotesResult=null;
       $('issueRetry').hidden=true;$('issueFollowUp').hidden=false;
       setText('issueAiHeading','BROWSER GITHUB FEED · UNVERIFIED');
-      setText('issueAiResult','This issue report was fetched directly by your browser and has not been independently verified by RepoWorld. You can inspect public repository source separately using the button below, without claiming the issue is confirmed or calling BharatCode.');
+      setText('issueAiResult','This issue report was fetched directly by your browser and was not independently checked by RepoWorld. You can inspect public repository source separately using the button below, without claiming the issue is confirmed or calling BharatCode.');
       return;
     }
     const repoId=state.activeId,number=issue.number,key=`${repoId}:${number}:${nodeId||''}`,serial=++state.issueInsightRevision;
