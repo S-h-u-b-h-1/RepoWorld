@@ -312,3 +312,65 @@ test('architectural façades keep module towers prominent and bounds finite afte
   assert.ok(renderer.hitAreas.every(x=>Number.isFinite(x.roof.x)&&Number.isFinite(x.roof.y)));
   assert.equal(renderer.edges.length,0);
 });
+
+
+test('dense 72-module cities never overlap real buildings or district footprints',()=>{
+  const {renderer}=world();
+  const kinds=['core','frontend','api','service','library','database','security','infra','test','docs'];
+  const nodes=Array.from({length:72},(_,i)=>({id:'dense/'+i,name:'Module '+i,
+    kind:kinds[i%kinds.length],fileCount:1+(i*41)%250}));
+  renderer.setGraph({nodes,edges:[]});
+  assert.equal(renderer.nodes.length,72);
+  for(const district of renderer.districts){
+    for(let i=0;i<district.nodes.length;i++){
+      const a=district.nodes[i];
+      assert.ok(Math.abs(a.x-district.center.x)+a.width<=district.halfWidth-1.5);
+      assert.ok(Math.abs(a.z-district.center.z)+a.width<=district.halfDepth-1.5);
+      for(let j=i+1;j<district.nodes.length;j++){
+        const b=district.nodes[j];
+        assert.ok(Math.abs(a.x-b.x)>=a.width+b.width+.5||
+                  Math.abs(a.z-b.z)>=a.width+b.width+.5,
+                  'overlapping modules '+a.id+' and '+b.id);
+      }
+      if(district.central)assert.ok(Math.abs(a.x)>=a.width+2.85+.5||
+                                    Math.abs(a.z)>=a.width+2.85+.5,
+                                    'module overlaps the illustrative beacon');
+    }
+  }
+  for(let i=0;i<renderer.districts.length;i++)for(let j=i+1;j<renderer.districts.length;j++){
+    const a=renderer.districts[i],b=renderer.districts[j];
+    assert.ok(Math.abs(a.center.x-b.center.x)>=a.halfWidth+b.halfWidth+5||
+              Math.abs(a.center.z-b.center.z)>=a.halfDepth+b.halfDepth+5,
+              'overlapping floating districts '+a.kind+' and '+b.kind);
+  }
+  renderer.render(2000);
+  assert.equal(renderer.hitAreas.length,72);
+});
+
+test('single dominant district uses roomier spiral and camera fits all module crowns',()=>{
+  const {renderer}=world();
+  const nodes=Array.from({length:72},(_,i)=>({id:'core/'+i,name:'Core '+i,kind:'core',fileCount:12+i}));
+  renderer.setGraph({nodes,edges:[]});
+  assert.equal(renderer.districts.length,1);
+  assert.ok(renderer.districts[0].halfWidth>=30);
+  assert.ok(renderer.focusDistrict('core'));
+  renderer.distance=renderer.targetDistance;
+  renderer.pan={...renderer.targetPan};
+  for(const node of renderer.nodes){
+    const p=renderer.project(node.x,node.height+.37,node.z);
+    assert.ok(p.x>=0&&p.x<=renderer.width&&p.y>=0&&p.y<=renderer.height);
+  }
+});
+
+test('small mobile canvas suppresses sub-pixel windows and throttles idle frames',()=>{
+  const {renderer}=world();
+  renderer.width=390;renderer.height=844;renderer.setGraph(graph);
+  renderer.render(2000);
+  const painted=renderer.lastPaintAt;
+  renderer.render(2012);
+  assert.equal(renderer.lastPaintAt,painted);
+  renderer.render(2040);
+  assert.equal(renderer.lastPaintAt,2040);
+  const d=renderer.fitOverviewDistance();
+  assert.ok(d<=850 && d>=110);
+});
