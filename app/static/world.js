@@ -35,8 +35,8 @@
   class RepoWorldRenderer {
     constructor(canvas, options={}){
       this.canvas=canvas;this.ctx=canvas.getContext('2d',{alpha:false});
-      this.onSelect=options.onSelect||(()=>{});this.onIssueSelect=options.onIssueSelect||(()=>{});this.onHover=options.onHover||(()=>{});
-      this.nodes=[];this.edges=[];this.districts=[];this.hotspots=[];this.mode='structure';this.selected=null;this.hovered=null;this.impact=null;this.issueMarkers=new Map();
+      this.onSelect=options.onSelect||(()=>{});this.onIssueSelect=options.onIssueSelect||(()=>{});this.onDistrictSelect=options.onDistrictSelect||(()=>{});this.onHover=options.onHover||(()=>{});
+      this.nodes=[];this.edges=[];this.districts=[];this.hotspots=[];this.mode='structure';this.selected=null;this.hovered=null;this.impact=null;this.issueMarkers=new Map();this.districtHitAreas=[];
       this.yaw=-.71;this.pitch=.85;this.distance=140;this.targetDistance=140;this.overviewDistance=140;this.zoomAnchor=null;
       this.pan={x:0,z:0};this.targetPan={x:0,z:0};this.activeDistrict=null;
       this.width=0;this.height=0;this.pixelRatio=1;this.spin=false;this.traffic=true;
@@ -126,7 +126,7 @@
         positioned.push(district);
       }
       this.districts=positioned;
-      this.nodes=nodes;this.issueMarkers=new Map();this.issueHitAreas=[];
+      this.nodes=nodes;this.issueMarkers=new Map();this.issueHitAreas=[];this.districtHitAreas=[];
       const lookup=new Map(nodes.map(n=>[n.id,n]));
       this.edges=(graph.edges||[]).map(edge=>({...edge,a:lookup.get(edge.source),b:lookup.get(edge.target)})).filter(e=>e.a&&e.b);
       for(const edge of this.edges){edge.a.degree++;edge.b.degree++;}
@@ -166,7 +166,9 @@
     }
     setSelected(id,{focus=false}={}){
       const node=this.nodes.find(n=>n.id===id);if(!node)return;
-      this.selected=id;this.activeDistrict=focus?node.kind:this.activeDistrict;
+      this.selected=id;
+      if(focus)this.activeDistrict=node.kind;
+      else if(this.activeDistrict&&node.kind!==this.activeDistrict)this.activeDistrict=null;
       if(focus){this.zoomAnchor=null;this.targetPan={x:node.x,z:node.z};this.targetDistance=Math.min(this.distance,60);}
     }
     fitDistrictDistance(district){
@@ -362,9 +364,20 @@
         }
         if(!afterPinch&&this.isDragging&&this.dragDistance<6){
           const r=this.canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
-          const issue=this.getIssueHit(x,y);
-          if(issue){if(this.tooltip)this.tooltip.hidden=true;this.setSelected(issue.nodeId,{focus:false});this.onIssueSelect(issue.nodeId);}
-          else {const hit=this.getHit(x,y);if(hit){this.setSelected(hit.id,{focus:false});this.onSelect(hit.id);}}
+          const plaque=this.getDistrictHit(x,y),issue=this.getIssueHit(x,y);
+          // The 26px issue hit target must not steal a visible district label.
+          // The painted 13.5px badge itself still takes precedence.
+          const onIssueBadge=issue&&Math.hypot(issue.x-x,issue.y-y)<=14.5;
+          if(plaque&&!onIssueBadge){
+            if(this.tooltip)this.tooltip.hidden=true;
+            this.focusDistrict(plaque.kind);this.onDistrictSelect(plaque.kind);
+          }else if(issue){
+            if(this.tooltip)this.tooltip.hidden=true;
+            this.setSelected(issue.nodeId,{focus:false});this.onIssueSelect(issue.nodeId);
+          }else{
+            const hit=this.getHit(x,y);
+            if(hit){this.setSelected(hit.id,{focus:false});this.onSelect(hit.id);}
+          }
         }
         this.isDragging=false;
       });
@@ -408,8 +421,14 @@
       return candidates.sort((a,b)=>Math.hypot(a.x-x,a.y-y)-Math.hypot(b.x-x,b.y-y)||a.depth-b.depth)[0]||null;
     }
     getHit(x,y){const hits=this.hitAreas.filter(h=>x>=h.x1&&x<=h.x2&&y>=h.y1&&y<=h.y2);return hits.sort((a,b)=>a.depth-b.depth)[0]?.node||null;}
+    getDistrictHit(x,y){return this.districtHitAreas.find(p=>x>=p.x1&&x<=p.x2&&y>=p.y1&&y<=p.y2)||null;}
     updateHover(x,y){
-      const pin=this.getIssueHit(x,y);
+      const plaque=this.getDistrictHit(x,y),pin=this.getIssueHit(x,y);
+      if(plaque&&(!pin||Math.hypot(pin.x-x,pin.y-y)>14.5)){
+        this.hovered=null;this.canvas.style.cursor='pointer';
+        if(this.tooltip)this.tooltip.hidden=true;
+        this.onHover(null);return;
+      }
       if(pin){
         this.hovered=pin.nodeId;
         this.canvas.style.cursor='pointer';
@@ -469,6 +488,7 @@
         const drop=this.islandVertices(d,-5.0);
         const cx=this.project(d.center.x,-2,d.center.z);
         ctx.save();
+        if(this.activeDistrict&&d.kind!==this.activeDistrict)ctx.globalAlpha=.17;
         const halo=ctx.createRadialGradient(cx.x,cx.y,0,cx.x,cx.y,Math.max(50,cx.scale*d.halfWidth*1.7));
         halo.addColorStop(0,rgba(d.color,.10));halo.addColorStop(1,rgba(d.color,0));
         ctx.fillStyle=halo;ctx.beginPath();ctx.ellipse(cx.x,cx.y,Math.max(40,cx.scale*d.halfWidth*1.9),Math.max(20,cx.scale*d.halfDepth*1.1),0,0,PI2);ctx.fill();
@@ -514,6 +534,7 @@
         const bend=7+hash('bend-'+d.kind)*4;
         const control=this.project(d.center.x*.5-d.center.z/len*bend,5.5,d.center.z*.5+d.center.x/len*bend);
         ctx.save();ctx.lineCap='round';
+        if(this.activeDistrict&&d.kind!==this.activeDistrict)ctx.globalAlpha=.13;
         const path=()=>{ctx.beginPath();ctx.moveTo(start.x,start.y);ctx.quadraticCurveTo(control.x,control.y,end.x,end.y);};
         path();ctx.strokeStyle='rgba(3,12,27,.88)';ctx.lineWidth=8;ctx.stroke();
         path();ctx.strokeStyle='rgba(79,115,152,.36)';ctx.lineWidth=5;ctx.stroke();
@@ -541,6 +562,7 @@
           const top=[[-w,h,-w],[w,h,-w],[w,h,w],[-w,h,w]].map(v=>this.project(x+v[0],v[1],z+v[2]));
           const bot=[[-w,0,-w],[w,0,-w],[w,0,w],[-w,0,w]].map(v=>this.project(x+v[0],v[1],z+v[2]));
           ctx.save();
+          if(this.activeDistrict&&d.kind!==this.activeDistrict)ctx.globalAlpha=.14;
           poly(ctx,[top[1],top[2],bot[2],bot[1]]);ctx.fillStyle=mix('#13283b',d.color,.18);ctx.fill();
           poly(ctx,[top[2],top[3],bot[3],bot[2]]);ctx.fillStyle=mix('#0b1a2c',d.color,.11);ctx.fill();
           poly(ctx,top);ctx.fillStyle=mix('#38506a',d.color,.18);ctx.fill();
@@ -555,7 +577,8 @@
       }
     }
     drawRepositoryBeacon(ctx){
-      const main=this.districts.find(d=>d.central);if(!main)return;
+      const main=this.districts.find(d=>d.central);
+      if(!main||(this.activeDistrict&&this.activeDistrict!==main.kind))return;
       // A symbolic city landmark for the repository itself, not a claimed entrypoint.
       const x=0,z=0,w=2.85,h=20.5;
       const b=[[-w,0,-w],[w,0,-w],[w,0,w],[-w,0,w]].map(v=>this.project(x+v[0],v[1],z+v[2]));
@@ -633,14 +656,15 @@
       const neighbors=this.edges.some(e=>e.a.id===this.selected&&e.b.id===n.id||e.b.id===this.selected&&e.a.id===n.id);
       const tracedDirect=this.impact?.direct.has(n.id),tracedIndirect=this.impact?.indirect.has(n.id);
       const traced=tracedDirect||tracedIndirect;
-      const dim=this.impact?!selected&&!traced:this.mode==='dependencies'&&!selected&&!neighbors;
+      const outsideFocus=Boolean(this.activeDistrict&&n.kind!==this.activeDistrict);
+      const dim=outsideFocus||(this.impact?!selected&&!traced:this.mode==='dependencies'&&!selected&&!neighbors);
       const hot=this.mode==='hotspots'&&this.hotspots.some(item=>item.id===n.id);
       const color=tracedDirect?'#efbd89':tracedIndirect?'#b6acff':hot?'#ff5d89':n.color,w=n.width,h=n.height;
       const verts=[[-w,0,-w],[w,0,-w],[w,0,w],[-w,0,w],[-w,h,-w],[w,h,-w],[w,h,w],[-w,h,w]];
       const pts=verts.map(p=>this.project(n.x+p[0],p[1],n.z+p[2]));
       const depth=this.project(n.x,h*.5,n.z).depth;
       const roof=this.project(n.x,h,n.z),base=this.project(n.x,0,n.z);
-      ctx.save();ctx.globalAlpha=dim?.30:1;
+      ctx.save();ctx.globalAlpha=outsideFocus?.14:dim?.30:1;
       const shadow=ctx.createRadialGradient(base.x,base.y,0,base.x,base.y,Math.max(14,base.scale*7));
       shadow.addColorStop(0,rgba(color,selected?.33:.17));shadow.addColorStop(1,rgba(color,0));
       ctx.fillStyle=shadow;ctx.beginPath();ctx.ellipse(base.x,base.y,Math.max(12,base.scale*7),Math.max(4,base.scale*3.4),0,0,PI2);ctx.fill();
@@ -663,7 +687,7 @@
         gd.addColorStop(.52,mix('#1c3655',color,face.bright*.65));
         gd.addColorStop(1,mix('#0a1a2d',color,face.bright*.30));
         ctx.fillStyle=gd;ctx.fill();
-        ctx.lineWidth=selected?1.4:.78;ctx.strokeStyle=rgba('#b6cde1',selected?.94:.45);
+        ctx.lineWidth=selected?1.25:.65;ctx.strokeStyle=rgba('#9fb7cb',selected?.9:.26);
         ctx.shadowColor=rgba(color,.45);ctx.shadowBlur=selected?9:1;ctx.stroke();ctx.shadowBlur=0;
       }
       // Raised architectural crown restores the original tower silhouette.
@@ -677,8 +701,8 @@
       ctx.fillStyle=mix('#152d46',color,.27);ctx.fill();
       poly(ctx,[rim[2],rim[3],crown[3],crown[2]]);
       ctx.fillStyle=mix('#101e32',color,.19);ctx.fill();
-      poly(ctx,crown);ctx.fillStyle=mix('#587890',color,.37);ctx.fill();
-      ctx.strokeStyle=rgba(selected?'#f4fbff':color,selected?.96:.72);
+      poly(ctx,crown);ctx.fillStyle=mix('#3a5066',color,.34);ctx.fill();
+      ctx.strokeStyle=rgba(selected?'#f4fbff':color,selected?.95:.52);
       ctx.lineWidth=selected?1.8:1.1;ctx.stroke();
       // Windows and mullions follow the two camera-visible facades.
       const visibleX=Math.sin(this.yaw)<0?w:-w;
@@ -687,25 +711,25 @@
         (side,y)=>this.project(n.x+visibleX+Math.sign(visibleX)*.025,y,n.z+side),
         (side,y)=>this.project(n.x+side,y,n.z+visibleZ+Math.sign(visibleZ)*.025)
       ];
-      const detailed=roof.scale*w>=3.3;
+      const detailed=roof.scale*w>=(this.width<650?8.3:7.0);
       const floors=detailed?Math.min(this.width<650||this.nodes.length>45?4:8,Math.max(3,Math.floor(h/1.6))):0;
       for(let facadeIndex=0;facadeIndex<facesVisible.length;facadeIndex++){
         const point=facesVisible[facadeIndex];
         for(let lane=1;lane<=3&&detailed;lane++){
           const side=-w+2*w*lane/4;
           const a=point(side,.65),b=point(side,h-.35);
-          ctx.strokeStyle=rgba('#bcd9f1',.18);
+          ctx.strokeStyle=rgba('#bcd9f1',.12);
           ctx.lineWidth=.65;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
         }
         for(let floor=1;floor<=floors;floor++){
           const y=h*(floor/(floors+1));
           const a=point(-w,y),b=point(w,y);
-          ctx.strokeStyle=rgba('#b5d8f3',.23);ctx.lineWidth=.6;
+          ctx.strokeStyle=rgba('#b5d8f3',.16);ctx.lineWidth=.6;
           ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
           for(let lane=1;lane<=3;lane++){
             if(hash(n.id+':'+facadeIndex+':'+floor+':'+lane)<.31)continue;
             const side=-w+2*w*lane/4,start=point(side,y+.19),end=point(side,Math.min(h-.28,y+.79));
-            ctx.strokeStyle=rgba('#e0f2ff',.35+.40*hash(n.id+':light:'+floor+':'+lane));
+            ctx.strokeStyle=rgba('#e0f2ff',.24+.31*hash(n.id+':light:'+floor+':'+lane));
             ctx.lineWidth=clamp(roof.scale*.19,1,2.05);
             ctx.beginPath();ctx.moveTo(start.x,start.y);ctx.lineTo(end.x,end.y);ctx.stroke();
           }
@@ -729,7 +753,8 @@
     drawBuildingLabels(ctx,hits){
       // Avoid 60 overlapping file labels. Show district landmarks by default,
       // and reveal other names on selection, hover, or closer camera zoom.
-      const candidates=hits.filter(h=>h.selected||h.hovered||(this.impact?.direct.has(h.node.id)&&this.distance<=92)||(h.node.landmark&&this.distance<=84)||this.distance<=58)
+      const candidates=hits.filter(h=>(!this.activeDistrict||h.node.kind===this.activeDistrict)&&
+        (h.selected||h.hovered||(this.impact?.direct.has(h.node.id)&&this.distance<=92)||(h.node.landmark&&this.distance<=84)||this.distance<=58))
         .sort((a,b)=>Number(b.selected)-Number(a.selected)||Number(b.hovered)-Number(a.hovered)||Number(b.node.landmark)-Number(a.node.landmark));
       const placed=[];
       for(const h of candidates){
@@ -754,6 +779,7 @@
       this.issueHitAreas=[];
       const placed=[];
       for(const hit of hits){
+        if(this.activeDistrict&&hit.node.kind!==this.activeDistrict)continue;
         const match=this.issueMarkers.get(hit.node.id);
         if(!match||(!match.referenced&&!match.suggested&&!match.observed)||hit.dim)continue;
         const count=match.referenced+match.suggested+match.observed,hasRef=match.referenced>0||match.observed>0;
@@ -775,9 +801,10 @@
       }
     }
     drawDistrictLabels(ctx){
-      const labels=[];
+      const labels=[];this.districtHitAreas=[];
       // Leading lines identify real (heuristically classified) code districts.
       for(const d of [...this.districts].sort((a,b)=>Number(b.central)-Number(a.central))){
+        if(this.activeDistrict&&d.kind!==this.activeDistrict)continue;
         if(this.distance>=135 && !d.central && d.count<2 && !['api','test'].includes(d.kind))continue;
         if(this.width<650 && !d.central && !['api','database'].includes(d.kind))continue;
         const center=this.project(d.center.x,5,d.center.z);
@@ -795,6 +822,9 @@
           ctx.restore();continue;
         }
         labels.push({x:clampedX,y:clampedY,w:width});
+        // Drawn labels are now accessible map controls, not just decoration.
+        this.districtHitAreas.push({kind:d.kind,x1:clampedX,y1:clampedY,
+          x2:clampedX+width,y2:clampedY+44});
         ctx.strokeStyle=rgba('#bad5f1',.36);ctx.lineWidth=.85;
         ctx.beginPath();ctx.moveTo(anchor.x,anchor.y-5);ctx.lineTo(clampedX+width*.5,clampedY+38);ctx.stroke();
         ctx.fillStyle='rgba(7,16,28,.94)';rounded(ctx,clampedX,clampedY,width,44,6);ctx.fill();

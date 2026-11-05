@@ -117,6 +117,26 @@ async def verify(browser,width,height):
     assert metrics["inspectorFont"]>=14 and metrics["sceneFont"]>=14,metrics
     assert 110<=metrics["overviewDistance"]<=850,metrics
     await page.screenshot(path=str(OUT/f"city-{width}.png"),full_page=True)
+    # A visible district plaque should be an actual zoom/focus target.
+    plaque=await page.evaluate("window.__TEST_SCENE__.districtHitAreas.find(p=>p.kind==='api')")
+    assert plaque,"API district plaque missing"
+    rect=await page.locator("#worldCanvas").bounding_box()
+    x=(plaque["x1"]+plaque["x2"])/2
+    y=(plaque["y1"]+plaque["y2"])/2
+    debug=await page.evaluate("""({x,y})=>{
+      const r=window.__TEST_SCENE__,pin=r.getIssueHit(x,y),label=r.getDistrictHit(x,y);
+      const rect=document.querySelector('#worldCanvas').getBoundingClientRect();
+      return {label:label?.kind,pin:pin?.nodeId,
+        onPaintedPin:pin?Math.hypot(pin.x-x,pin.y-y)<=14.5:false,
+        domTarget:document.elementFromPoint(rect.left+x,rect.top+y)?.id||''};
+    }""",{"x":x,"y":y})
+    await page.mouse.click(rect["x"]+x,rect["y"]+y)
+    actual=await page.evaluate("window.__TEST_SCENE__.activeDistrict")
+    assert actual=="api",("District plaque click failed",width,debug,actual)
+    await page.wait_for_timeout(400)
+    visibleKinds=await page.evaluate("window.__TEST_SCENE__.districtHitAreas.map(x=>x.kind)")
+    assert visibleKinds and set(visibleKinds)=={"api"},visibleKinds
+    await page.screenshot(path=str(OUT/f"district-focused-{width}.png"),full_page=True)
 
     # Existing transient controls must be usable at both sizes.
     await page.locator("#mapCommandTrigger").click()

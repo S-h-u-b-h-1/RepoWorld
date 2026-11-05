@@ -397,3 +397,37 @@ test('keyboard cycling selects actual imported buildings and wraps without inven
   renderer.setGraph({nodes:[],edges:[]});
   assert.equal(renderer.cycleModule(1),null);
 });
+
+test('visible district plaques can be clicked to focus, with issue pins retaining priority',()=>{
+  const chosen=[];
+  const {renderer,events}=world({onDistrictSelect:kind=>chosen.push(kind)});
+  renderer.setGraph(graph);renderer.render(2000);
+  const plaque=renderer.districtHitAreas.find(p=>p.kind==='api');
+  assert.ok(plaque,'API district label is visible at desktop overview');
+  const x=(plaque.x1+plaque.x2)/2,y=(plaque.y1+plaque.y2)/2;
+  assert.equal(renderer.getDistrictHit(x,y)?.kind,'api');
+  events.pointerdown({pointerId:1,pointerType:'mouse',clientX:x,clientY:y});
+  events.pointerup({pointerId:1,pointerType:'mouse',clientX:x,clientY:y});
+  assert.deepEqual(chosen,['api']);
+  assert.equal(renderer.activeDistrict,'api');
+  assert.equal(renderer.edges.length,graph.edges.length);
+  renderer.setGraph({nodes:[],edges:[]});renderer.render(2200);
+  assert.equal(renderer.districtHitAreas.length,0);
+});
+
+test('district focus shows only its own plaques and issue pins until Overview reset',()=>{
+  const {renderer}=world();renderer.setGraph(graph);
+  renderer.setIssueMarkers({'src/api':{referenced:[10]},'src/db':{referenced:[11]}});
+  renderer.focusDistrict('api');
+  renderer.render(3000);
+  assert.ok(renderer.districtHitAreas.length>0);
+  assert.ok(renderer.districtHitAreas.every(p=>p.kind==='api'));
+  assert.ok(renderer.issueHitAreas.every(p=>p.nodeId==='src/api'));
+  renderer.resetCamera();renderer.render(3200);
+  assert.equal(renderer.activeDistrict,null);
+  // At the fitted overview zoom, one-module districts are intentionally hidden
+  // to avoid plaque clutter. Zoom closer before asserting their restoration.
+  renderer.distance=110;renderer.targetDistance=110;
+  renderer.render(3400);
+  assert.ok(renderer.districtHitAreas.some(p=>p.kind!=='api'));
+});
