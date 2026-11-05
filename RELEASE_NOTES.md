@@ -1,3 +1,11 @@
+## Free static cold-start launcher — November 5, 2026
+
+- Fast first-visit launch page: https://repoworld-launch.onrender.com, published on Render Free Static Site.
+- Existing interactive app remains at https://repoworld-3b9e.onrender.com; no changes to backend hosting costs or security policies.
+- Static launcher shows an illustrative fixture immediately, probes the backend's actual SVG favicon, then redirects only after the image loads; it has a direct-open link and bounded retries.
+- Valid public `?repo=owner/repo` share parameters survive the transition. Invalid links are discarded, and no cookies, secrets, or private source data are shared by the launcher.
+- Five Node tests and desktop/mobile screenshot checks; CI now includes launch tests. This is a cold-start UX mitigation, **not** an elimination of Render Free sleep.
+
 ## v0.9.8 — Read-only browser Issue Radar fallback
 
 - When a server-backed public GitHub issue fetch returns a **GitHub provider** HTTP 429, the browser requests up to 30 open issues directly through GitHub's documented cross-origin public REST API. The request includes **no credentials** and consumes the visitor IP's public allowance, not Render's shared quota.

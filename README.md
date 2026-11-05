@@ -4,6 +4,12 @@
 
 **Status:** Public source: https://github.com/S-h-u-b-h-1/RepoWorld. Free hosted site: https://repoworld-3b9e.onrender.com. The source's v0.9.8 Issue Radar fallback is tested locally and in mocked browsers; the public host and real GitHub API behavior must be checked separately after each deployment. No hackathon submission is claimed.
 
+## Fast free launch page (static CDN)
+
+Use **https://repoworld-launch.onrender.com** as the first-visit and hackathon entry URL. It is a separate **free Render static site**, not a second Python application. Its lightweight HTML/CSS loads without waking the backend, displays an illustrative 3D city fixture, and probes the actual backend's public SVG favicon. After that image genuinely loads, the launcher opens the real app at **https://repoworld-3b9e.onrender.com**. Visitors can also follow its direct link or retry.
+
+The launcher preserves only validated public `?repo=owner%2Frepo` parameters and never sends session cookies, CSRF values, private repo content, or a BharatCode key. This improves first paint and honest cold-start feedback; **it does not eliminate Render Free's backend spin-up delay or ephemeral data loss**. The interactive explorer, GitHub importer, and AI assistant remain on the existing Python service. Static launch tests are part of GitHub CI.
+
 ## Try RepoWorld (no account)
 
 1. Open RepoWorld. A new browser sees **Add GitHub repository**; a returning browser with saved cities sees its last city.
