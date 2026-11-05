@@ -340,3 +340,9 @@
   .city-hint{font-size:10px;max-width:70vw}
   .issue-summary{font-size:12px}
 }
+
+/* v0.9.11: portable, evidence-qualified issue notes in existing issue drawer. */
+.issue-copy-notes{border:1px solid #626b75;background:#242930;color:#e6edf7;font-size:13px!important;line-height:1.45;text-align:center}
+.issue-copy-notes:hover,.issue-copy-notes:focus-visible{border-color:#b7ccd9;background:#303942}
+.issue-copy-notes:focus-visible{outline:2px solid #b1d9fd;outline-offset:2px}
+@media(max-width:620px){.issue-ai-actions .issue-copy-notes{min-height:42px;flex:1}}

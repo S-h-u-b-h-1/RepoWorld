@@ -28,6 +28,12 @@
 - An optional source-evidence retrieval can use one bounded codeload public HEAD ZIP for up to 4 actual files when an ephemeral free deployment has no GitHub API token, rather than relying on the shared server-IP REST quota. No archive is executed or trusted as instructions.
 - This produces **un-pinned live-branch** evidence, not a verified commit SHA, and must not be confused with a confirmed bug or fix. Model availability still requires a valid BharatCode key.
 
+## Contribution-ready issue notes
+
+- New read-only **Copy investigation notes** action exports a small, explicitly qualified Markdown issue research brief with the canonical original GitHub URL.
+- Preserve provenance distinctions: path referenced by issue, browser-only unverified suggestion, fetched source excerpt and AI suggestion are not equivalent. Switching issues cannot copy a previous issue's guide.
+- No repository token, sign-in, GitHub posting, server persistence or additional inference required.
+
 ## Open release gates (not assumed complete)
 1. **v0.9.8 live check:** GitHub CI, Render deployed commit, public /api/health and /api/ready, and a real browser Issue Radar test. Local fixture tests cannot certify GitHub CORS/network access for every visitor.
 2. **Authenticated provider reliability:** Add a least-privilege server-side GITHUB_TOKEN privately on Render if source-verified issue investigations must work when the server's shared GitHub IP is rate-limited; verify behavior and 401/403 handling.

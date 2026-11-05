@@ -48,6 +48,7 @@ async def verify(browser,width,height):
     for tag in ('<link rel="stylesheet" href="/static/styles.css">',
                 '<script defer src="/static/world.js"></script>',
                 '<script defer src="/static/browser-radar.js"></script>',
+                '<script defer src="/static/investigation-notes.js"></script>',
                 '<script defer src="/static/app.js"></script>'):
         html=html.replace(tag,"")
     await page.set_content(html,wait_until="domcontentloaded")
@@ -90,6 +91,7 @@ async def verify(browser,width,height):
       };
     })()""")
     await page.add_script_tag(content=(ROOT/"app/static/browser-radar.js").read_text())
+    await page.add_script_tag(content=(ROOT/"app/static/investigation-notes.js").read_text())
     await page.add_script_tag(content=(ROOT/"app/static/app.js").read_text())
     await page.evaluate("document.dispatchEvent(new Event('DOMContentLoaded'))")
     await page.wait_for_function("""() => window.__TEST_SCENE__?.hitAreas.length===72 &&
@@ -163,6 +165,28 @@ async def verify(browser,width,height):
     assert await page.locator("#issueList .issue-item").count()==0
     assert await page.evaluate("window.__CALLS__.length")==count
     await page.screenshot(path=str(OUT/f"issue-filters-{width}.png"),full_page=True)
+    # Copy the actual visible issue notes from the real controller. This never
+    # grants clipboard permissions or sends a provider request in production:
+    # only the offline QA page replaces its clipboard writer with a spy.
+    await page.evaluate("""() => Object.defineProperty(navigator,'clipboard',{
+      configurable:true,value:{writeText:async text=>{window.__COPIED_NOTES__=text;}}
+    })""")
+    await page.locator("#issueFilterType").select_option("all")
+    await page.locator("#issueFilterText").fill("")
+    await page.locator("#issueList .issue-item .issue-title-button").click()
+    await page.locator("#issueDrawer").wait_for(state="visible")
+    # Opening an issue already triggers the existing assistant guide. Wait for
+    # that request to settle, then ensure copying creates NO additional calls.
+    await page.wait_for_function("document.querySelector('#issueAiHeading')?.textContent?.includes('UNAVAILABLE')",timeout=5000)
+    calls_before=await page.evaluate("window.__CALLS__.length")
+    await page.locator("#issueCopyNotes").click()
+    await page.wait_for_function("typeof window.__COPIED_NOTES__==='string'",timeout=5000)
+    notes=await page.evaluate("window.__COPIED_NOTES__")
+    assert "Issue: https://github.com/pallets/flask/issues/25" in notes,notes[:350]
+    assert "not a reproduced defect or verified fix" in notes,notes[:350]
+    assert "No fetched source excerpts were confirmed" in notes,notes[-650:]
+    assert await page.evaluate("window.__CALLS__.length")==calls_before, "Copy action triggered unexpected network call"
+    await page.screenshot(path=str(OUT/f"issue-copy-notes-{width}.png"),full_page=True)
     assert not errors,errors
     assert not await page.evaluate("document.documentElement.scrollWidth>innerWidth")
     print(f"PASS {width}x{height}: {metrics}; browser errors={errors}")

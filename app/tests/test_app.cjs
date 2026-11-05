@@ -6,6 +6,7 @@ const path=require('node:path');
 const vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'../static/app.js'),'utf8');
 const browserIssueSource=fs.readFileSync(path.join(__dirname,'../static/browser-radar.js'),'utf8');
+const issueNotesSource=fs.readFileSync(path.join(__dirname,'../static/investigation-notes.js'),'utf8');
 const GRAPH={name:'Demo City',owner:'testowner',branch:'main',source:'github',url:'https://github.com/testowner/demo-city',
   nodes:[{id:'web',name:'Web',kind:'frontend',path:'apps/web',fileCount:6,files:['apps/web/index.ts'],description:'Website'},
     {id:'api',name:'API',kind:'api',path:'services/api',fileCount:5,files:['services/api/index.py'],description:'API service'}],
@@ -107,6 +108,7 @@ function makeApp({authenticated=true,active=true,assistantResult=null,multipleIs
   const sandbox={document,window,fetch:fetchStub,console,location,URLSearchParams,URL,
     clearTimeout(){},setTimeout(fn){fn();return 1;},encodeURIComponent,Response};
   vm.runInNewContext(browserIssueSource,sandbox);
+  vm.runInNewContext(issueNotesSource,sandbox);
   vm.runInNewContext(source,sandbox);
   const flush=()=>new Promise(resolve=>setImmediate(resolve));
   async function boot(){document.onload();for(let i=0;i<4;i++)await flush();}
@@ -577,4 +579,44 @@ test('district focus hides competing overlays and keeps existing city graph inta
   assert.equal(ui.el('inspector').hidden,true);
   assert.equal(ui.el('mapTools').hidden,true);
   assert.equal(ui.renderer.graph.nodes.length,GRAPH.nodes.length);
+});
+
+test('investigation notes copy the selected public issue and labeled source facts',async()=>{
+  const reply={mode:'ai',sourceScope:'commit-pinned',answer:'Inspect the login handler.',
+    sourceFilesRead:1,steps:['Read services/api/index.py'],tests:['Run login regression'],
+    sources:[{file:'services/api/index.py',evidence:'excerpt',
+      url:'https://github.com/testowner/demo-city/blob/'+'b'.repeat(40)+'/services/api/index.py#L7-L16'}]};
+  const ui=makeApp({active:true,assistantResult:reply});await ui.boot();
+  ui.renderer.onIssueSelect('api');
+  for(let i=0;i<5;i++)await new Promise(resolve=>setImmediate(resolve));
+  await ui.el('issueCopyNotes').listeners.click();
+  assert.equal(ui.copied.length,1);
+  assert.match(ui.copied[0],/testowner\/demo-city\/issues\/4/);
+  assert.match(ui.copied[0],/AI-generated suggestion \(not verified\)/);
+  assert.match(ui.copied[0],/Fetched source excerpt, review before citing/);
+  assert.match(ui.copied[0],/Tests \(not run\)/i);
+  assert.equal(ui.calls.filter(x=>x.url.includes('/assistant')).length,1);
+});
+test('new issue selection cannot reuse previously fetched AI investigation notes',async()=>{
+  const ui=makeApp({active:true,multipleIssues:true});await ui.boot();
+  ui.renderer.onIssueSelect('api');
+  for(let i=0;i<5;i++)await new Promise(resolve=>setImmediate(resolve));
+  ui.el('issueDrawerSelect').value='789';
+  ui.el('issueDrawerSelect').listeners.change();
+  await ui.el('issueCopyNotes').listeners.click();
+  assert.equal(ui.copied.length,1);
+  assert.match(ui.copied[0],/testowner\/demo-city\/issues\/789/);
+  assert.doesNotMatch(ui.copied[0],/Issue: https:\/\/github\.com\/testowner\/demo-city\/issues\/4\b/);
+});
+test('browser fallback notes remain explicitly unverified and never invoke server assistant',async()=>{
+  const feed=[{number:12,state:'open',title:'Fix services/api/index.py',body:'services/api/index.py bug',labels:[]}];
+  const ui=makeApp({active:true,issueFailure:429,browserIssues:feed});await ui.boot();
+  for(let i=0;i<5;i++)await new Promise(resolve=>setImmediate(resolve));
+  ui.el('mapCommandTrigger').listeners.click();ui.compassTabs[1].listeners.click();
+  ui.el('issueList').children[0].children[0].children[0].listeners.click();
+  await ui.el('issueCopyNotes').listeners.click();
+  assert.equal(ui.copied.length,1);
+  assert.match(ui.copied[0],/browser-only issue feed; source unverified/);
+  assert.doesNotMatch(ui.copied[0],/AI-generated suggestion/);
+  assert.equal(ui.calls.filter(x=>x.url.includes('/assistant')).length,0);
 });

@@ -1,4 +1,4 @@
-/* RepoWorld v0.9.10: minimal city, source-scoped issue guide, and shareable public-repository entry points. */
+/* RepoWorld v0.9.11: minimal city, source-scoped issue guide, and shareable public-repository entry points. */
 (function(){
   'use strict';
   const $=id=>document.getElementById(id);
@@ -6,7 +6,7 @@
   const state={session:null,repos:[],activeId:null,graph:null,renderer:null,tour:null,tourIndex:-1,
     chosen:null,layer:'structure',busy:false,toast:null,impact:null,searchTimer:null,searchRevision:0,lastFindResults:[],
     radar:null,radarError:null,radarRevision:0,compassTab:'ask',chatHistory:[],chatBusy:false,assistantNode:null,assistantIssue:null,
-    issueOpenNode:null,issueSelectedNumber:null,issueInsightCache:new Map(),issueInsightRevision:0};
+    issueOpenNode:null,issueSelectedNumber:null,issueNotesResult:null,issueInsightCache:new Map(),issueInsightRevision:0};
   const esc=(s)=>String(s??'');
   const getNode=(id)=>state.graph?.nodes?.find(n=>n.id===id);
   const names={frontend:'Frontend Boulevard',api:'API Heights',service:'Service Quarter',database:'Data Harbor',
@@ -121,7 +121,7 @@
     state.graph=graph;state.chosen=null;state.tour=null;state.tourIndex=-1;clearImpact();
     state.chatHistory=[];state.assistantNode=null;state.assistantIssue=null;state.radar=null;state.radarError=null;state.radarRevision++;
     $('issueFilterText').value='';$('issueFilterType').value='all';
-    state.issueOpenNode=null;state.issueSelectedNumber=null;state.issueInsightCache.clear();state.issueInsightRevision++;$('issueDrawer').hidden=true;$('issueMapLegend').hidden=true;
+    state.issueOpenNode=null;state.issueSelectedNumber=null;state.issueNotesResult=null;state.issueInsightCache.clear();state.issueInsightRevision++;$('issueDrawer').hidden=true;$('issueMapLegend').hidden=true;
     $('assistantThread').replaceChildren();addAssistantWelcome();setText('issuesTabCount','');$('issuesTabCount').hidden=true;
     showCity();initializeRenderer();
     state.renderer.setGraph(graph);state.renderer.setMode('structure');state.renderer.setTraffic?.(false);
@@ -451,7 +451,7 @@
   }
   function hideIssueDrawer(){
     $('issueDrawer').hidden=true;state.issueOpenNode=null;state.issueSelectedNumber=null;
-    state.issueInsightRevision++;
+    state.issueNotesResult=null;state.issueInsightRevision++;
   }
   function issueFor(number){return (state.radar?.issues||[]).find(i=>i.number===number)||null;}
   function linkedIssues(nodeId){return (state.radar?.issues||[]).filter(i=>i.matches?.some(m=>m.nodeId===nodeId));}
@@ -485,6 +485,7 @@
   }
   function showIssueDetail(issue,nodeId){
     state.issueSelectedNumber=issue.number;
+    state.issueNotesResult=null;
     const match=(issue.matches||[]).find(m=>m.nodeId===nodeId);
     setText('issueDrawerHeading',issue.title||'Untitled GitHub issue');
     setText('issueDetailIndex','OPEN ISSUE #'+issue.number);
@@ -583,6 +584,7 @@
     if(state.chosen)renderBuildingIssues(state.chosen);
   }
   function renderIssueInsight(result){
+    state.issueNotesResult=result;
     const container=$('issueAiResult');container.replaceChildren();
     const isAi=result.mode==='ai';
     setText('issueAiHeading',isAi?'BHARATCODE · ISSUE GUIDE':result.providerStatus==='timeout'?'AI UNAVAILABLE · FILE GUIDE':'FILE GUIDE · AI NOT ACTIVE');
@@ -648,6 +650,7 @@
   }
   async function explainIssue(issue,nodeId){
     if(state.radar?.browserFallback){
+      state.issueNotesResult=null;
       $('issueRetry').hidden=true;$('issueFollowUp').hidden=false;
       setText('issueAiHeading','BROWSER GITHUB FEED · UNVERIFIED');
       setText('issueAiResult','The issue title and description came from your browser’s public GitHub request. RepoWorld’s server has not independently checked this report or inspected its source. Open the original issue to verify it. Enable a private server-side GITHUB_TOKEN for source-scoped issue investigation.');
@@ -666,9 +669,34 @@
       state.issueInsightCache.set(key,result);retainObservedIssueLocations(number,result);renderIssueInsight(result);
     }catch(e){
       if(serial!==state.issueInsightRevision||$('issueDrawer').hidden)return;
+      state.issueNotesResult=null;
       setText('issueAiHeading','ISSUE GUIDE · UNAVAILABLE');
       setText('issueAiResult',e.message+' The original issue remains available on GitHub.');
       $('issueRetry').hidden=false;$('issueFollowUp').hidden=false;
+    }
+  }
+  async function copyInvestigationNotes(){
+    const issue=issueFor(state.issueSelectedNumber);
+    if(!issue||!state.graph||$('issueDrawer').hidden){
+      toast('Select an open GitHub issue before copying notes.',true);return;
+    }
+    let content;
+    try{
+      if(typeof window.RepoWorldInvestigationNotes!=='function')throw Error('Notes formatter unavailable');
+      content=window.RepoWorldInvestigationNotes({
+        graph:state.graph,issue,guide:state.issueNotesResult,
+        browserFallback:Boolean(state.radar?.browserFallback)
+      });
+    }catch{
+      toast('Could not prepare investigation notes for this public issue.',true);return;
+    }
+    try{
+      if(!window.navigator?.clipboard?.writeText)throw Error('Clipboard unavailable');
+      await window.navigator.clipboard.writeText(content);
+      toast('Investigation notes copied. Check evidence before sharing.');
+    }catch{
+      if(typeof window.prompt==='function')window.prompt('Copy investigation notes:',content);
+      else toast('Copy unavailable in this browser. Open the original GitHub issue.',true);
     }
   }
   function followUpIssue(){
@@ -845,6 +873,7 @@
     $('closeIssueDrawer').addEventListener('click',hideIssueDrawer);
     $('issueRetry').addEventListener('click',()=>{const issue=issueFor(state.issueSelectedNumber);if(issue){state.issueInsightCache.delete(`${state.activeId}:${issue.number}:${state.issueOpenNode||''}`);explainIssue(issue,state.issueOpenNode);}});
     $('issueFollowUp').addEventListener('click',followUpIssue);
+    $('issueCopyNotes').addEventListener('click',copyInvestigationNotes);
     $('inspectorAsk').addEventListener('click',()=>{setAssistantContext(state.chosen,null);openFind('','ask');});
     document.querySelectorAll('[data-layer]').forEach(b=>b.addEventListener('click',()=>setLayer(b.dataset.layer)));
     $('resetCamera').addEventListener('click',()=>{state.renderer?.resetCamera();$('mapTools').hidden=true;});
