@@ -33,7 +33,7 @@ abuse protection.
 Repository source URL: https://github.com/S-h-u-b-h-1/RepoWorld
 Fast launch URL: https://repoworld-launch.onrender.com (Render Free static CDN; displays real backend wake-up state).
 Live application URL: https://repoworld-3b9e.onrender.com (Render Free; idle cold starts, ephemeral browser workspaces).
-Hackathon page: https://auth.bharatcode.ai/hackathon
+Hackathon page: https://bharatcode.ai/hackathon
 
 On Render Free, when the server receives a GitHub API rate-limit response,
 RepoWorld can fetch a limited open-issue page directly in the visitor's browser
