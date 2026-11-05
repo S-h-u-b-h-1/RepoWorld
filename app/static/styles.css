@@ -368,3 +368,8 @@
 .empty-state #openOfflineCity{border-color:#5e737f;color:#e2edf6;background:#1f2730}
 .empty-state #openOfflineCity:hover{background:#2b3945}
 #repoMenu .popover-command[hidden]{display:none}
+
+/* Portable public map file actions remain inside the existing menu/empty state. */
+#restoreOfflineCityEmpty{font-size:13px;min-height:39px;border-color:#586d7b;color:#dae9f5}
+#restoreOfflineCityEmpty:hover{background:#25313d}
+#offlineCityFile[hidden]{display:none}

@@ -43,6 +43,8 @@
             <button type="button" class="popover-command" id="saveOfflineCity" hidden><span>▣</span> Save city for offline viewing</button>
             <button type="button" class="popover-command" id="openOfflineCityMenu" hidden><span>◇</span> Open browser-saved offline city</button>
             <button type="button" class="popover-command" id="reconnectOfflineCity" hidden><span>↻</span> Re-import to restore live tools</button>
+            <button type="button" class="popover-command" id="downloadOfflineCity" hidden><span>↓</span> Download portable city file</button>
+            <button type="button" class="popover-command" id="restoreOfflineCity"><span>↑</span> Restore city from file</button>
             <button type="button" class="popover-command" id="clearOfflineCity" hidden><span>×</span> Clear browser city backup</button>
             <button type="button" class="popover-command" id="addAnotherRepo"><span>＋</span> Add GitHub repository</button>
           </div>
@@ -61,9 +63,12 @@
       <p class="recent-repo-help" id="recentRepoHelp" hidden>This browser remembers only the public repository name. Re-importing fetches current code after you confirm.</p>
       <button type="button" class="recent-repo-action" id="openOfflineCity" hidden>Open saved map offline <strong id="offlineRepoName"></strong> <span aria-hidden="true">↗</span></button>
       <p class="recent-repo-help" id="offlineRepoHelp" hidden>Opt-in browser backup: view stored public buildings and paths without live GitHub, Issue Radar or AI. Re-import to reconnect.</p>
+      <button type="button" class="recent-repo-action" id="restoreOfflineCityEmpty">Restore city from a file <span aria-hidden="true">↗</span></button>
+      <p class="recent-repo-help">Portable backups are browser-only public maps. Files are not uploaded to RepoWorld.</p>
       <div class="empty-assurance">NO ACCOUNT REQUIRED <span>·</span> PUBLIC REPOSITORIES ONLY <span>·</span> READ-ONLY IMPORT</div>
     </section>
 
+    <input type="file" id="offlineCityFile" accept=".json,application/json" aria-label="Select a RepoWorld public-city JSON file" hidden>
     <div class="world-status" id="worldStatus" hidden><span class="status-light"></span><span id="cityStatusText">CITY READY</span><span class="status-divider"></span><span id="cityStatusCounts"></span></div>
     <div class="city-hint" id="cityHint" hidden>DRAG TO EXPLORE <span>·</span> TAP A DISTRICT LABEL TO FOCUS</div>
     <button type="button" class="issue-map-legend" id="issueMapLegend" hidden aria-label="Browse open GitHub issues for this repository" title="Browse issues and locate their suggested buildings"><i class="issue-legend-gold" aria-hidden="true"></i><span id="issueMapCount">OPEN ISSUES</span><span class="issue-legend-divider">·</span><i class="issue-legend-outline" aria-hidden="true">?</i><span>SUGGESTED LOCATIONS</span><span class="issue-legend-arrow" aria-hidden="true">↗</span></button>

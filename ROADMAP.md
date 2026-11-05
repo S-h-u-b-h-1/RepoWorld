@@ -50,6 +50,11 @@
 - User can open a read-only local 3D preview after Render Free loses server-side SQLite; tool calls for issue feeds, AI, and server impact analysis are disabled. Browser-only filenames/path search and sampled building inspection remain.
 - Reconnect requires explicit re-import under existing quotas, and local storage can be cleared. This is **not** cross-device, durable server persistence or a server-authenticated graph restoration.
 
+## Portable public city snapshot files (v0.9.15)
+- Manual download and browser-local restore of a versioned, bounded public-city JSON file. File transfer enables a public map to move between devices while Render Free temporary SQLite resets; no external storage, credentials or model calls.
+- Import validation is fail-closed for malformed/oversized/unsafe data, restores only whitelisted public topology, and never establishes a current GitHub state, authenticated session, or server-side ownership.
+- Offline limitations remain clearly labeled. A browser cannot regain live Issue Radar, BharatCode and source verification without a confirmed public re-import under normal quotas. **Durable cloud persistence remains outstanding.**
+
 ## Open release gates (not assumed complete)
 1. **v0.9.8 live check:** GitHub CI, Render deployed commit, public /api/health and /api/ready, and a real browser Issue Radar test. Local fixture tests cannot certify GitHub CORS/network access for every visitor.
 2. **Authenticated provider reliability:** Add a least-privilege server-side GITHUB_TOKEN privately on Render if source-verified issue investigations must work when the server's shared GitHub IP is rate-limited; verify behavior and 401/403 handling.

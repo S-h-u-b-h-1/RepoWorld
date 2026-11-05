@@ -1,4 +1,4 @@
-/* RepoWorld v0.9.14: minimal city, source-scoped issue guide, and shareable public-repository entry points. */
+/* RepoWorld v0.9.15: minimal city, source-scoped issue guide, and shareable public-repository entry points. */
 (function(){
   'use strict';
   const $=id=>document.getElementById(id);
@@ -91,6 +91,54 @@
     if(!validPublicRepo(repo))return;
     startImport();$('importInput').value=repo;
   }
+  function downloadPortableCity(){
+    const backup=readOfflineBackup();
+    if(!backup){toast('Save a public city before downloading a portable map.',true);return;}
+    let objectUrl=null;
+    try{
+      const utility=window.RepoWorldOfflineCity;
+      const text=utility.exportText(window.localStorage);
+      closePopovers();
+      const blob=new Blob([text],{type:'application/json'});
+      if(blob.size>utility.maxFileBytes)throw Error('This portable city file is too large.');
+      objectUrl=window.URL.createObjectURL(blob);
+      const link=document.createElement('a');
+      link.href=objectUrl;link.download=utility.fileName(backup.graph);
+      document.body?.append(link);link.click();link.remove?.();
+      toast('Portable public-city file prepared. It contains no live session or AI history.');
+    }catch(e){
+      if(objectUrl)window.URL.revokeObjectURL(objectUrl);
+      toast('Could not export the public city file: '+(e.message||'browser download blocked'),true);
+      return;
+    }
+    if(objectUrl)setTimeout(()=>window.URL.revokeObjectURL(objectUrl),1000);
+  }
+  function choosePortableCityFile(){
+    closePopovers();
+    const input=$('offlineCityFile');input.value='';input.click();
+  }
+  async function restorePortableCityFile(){
+    const input=$('offlineCityFile'),file=input.files?.[0];
+    if(!file)return;
+    try{
+      const utility=window.RepoWorldOfflineCity;
+      if(!utility||typeof file.size!=='number'||file.size<20||
+          file.size>utility.maxFileBytes)
+        throw Error('Select a RepoWorld public-city JSON file within the 5 MB limit.');
+      const text=await file.text();
+      const preview=utility.importText(text);
+      const existing=readOfflineBackup();
+      if(existing?.graph.url!==preview.graph.url&&existing&&
+          typeof window.confirm==='function'&&
+          !window.confirm('Replace the existing local public city backup?'))
+        return;
+      utility.restoreText(text,window.localStorage);
+      await openOfflineBackup();
+      toast('Portable city map restored locally. Re-import to use live GitHub and AI tools.');
+    }catch(e){
+      toast('Could not restore offline city: '+(e.message||'unsupported file'),true);
+    }finally{input.value='';}
+  }
   function clearOfflineBackup(){
     if(!window.RepoWorldOfflineCity?.clear(window.localStorage)){
       toast('Browser storage is blocked; the backup could not be cleared.',true);return;
@@ -108,6 +156,7 @@
   }
   function showEmpty(){
     state.offline=false;state.graph=null;
+    setText('cityStatusText','CITY READY');
     $('workspace').classList.add('is-empty');$('emptyState').hidden=false;$('canvasStage').hidden=true;
     $('mapCommandTrigger').hidden=true;$('mapTools').hidden=true;$('cityHint').hidden=true;$('worldStatus').hidden=true;
     $('inspector').hidden=true;$('tourPanel').hidden=true;$('issueDrawer').hidden=true;$('issueMapLegend').hidden=true;state.issueInsightRevision++;
@@ -130,6 +179,7 @@
     $('saveOfflineCity').hidden=!(state.graph?.source==='github'&&!state.offline);
     $('openOfflineCityMenu').hidden=!backup||state.offline;
     $('clearOfflineCity').hidden=!backup;
+    $('downloadOfflineCity').hidden=!backup;
     $('reconnectOfflineCity').hidden=!state.offline;
     $('refreshCurrentRepo').hidden=state.offline||!(state.graph?.source==='github');
     $('copyCityLink').hidden=!(state.graph?.source==='github');
@@ -1044,6 +1094,10 @@
     $('openOfflineCityMenu').addEventListener('click',openOfflineBackup);
     $('reconnectOfflineCity').addEventListener('click',reconnectOfflineBackup);
     $('clearOfflineCity').addEventListener('click',clearOfflineBackup);
+    $('downloadOfflineCity').addEventListener('click',downloadPortableCity);
+    $('restoreOfflineCity').addEventListener('click',choosePortableCityFile);
+    $('restoreOfflineCityEmpty').addEventListener('click',choosePortableCityFile);
+    $('offlineCityFile').addEventListener('change',restorePortableCityFile);
     $('refreshCurrentRepo').addEventListener('click',refreshCodeIndex);
     $('copyCityLink').addEventListener('click',copyCityLink);
     $('closeImport').addEventListener('click',hideImport);

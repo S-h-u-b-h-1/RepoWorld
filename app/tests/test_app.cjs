@@ -22,6 +22,7 @@ class FakeElement{
       contains:n=>this.classNames.has(n)};
   }
   addEventListener(type,callback){this.listeners[type]=callback;}
+  click(){this.clicked=true;this.listeners.click?.();}
   setAttribute(n,v){this.attrs.set(n,v);}
   getAttribute(n){return this.attrs.get(n);}
   append(...children){this.children.push(...children);}
@@ -43,6 +44,7 @@ function makeApp({authenticated=true,active=true,assistantResult=null,multipleIs
     querySelector(q){const m=q.match(/\[data-compass-tab="(.*?)"\]/);return m?compassTabs.find(b=>b.dataset.compassTab===m[1]):null;},
     createElement(tag){return new FakeElement(tag);},
     activeElement:new FakeElement('div'),
+    body:new FakeElement('body'),
   };
   const user={name:'Test User',username:'tester',provider:'github',email:'',avatar:''};
   const session=()=>({authenticated:true,guest:true,user:null,csrf:'csrf-test',
@@ -116,9 +118,12 @@ function makeApp({authenticated=true,active=true,assistantResult=null,multipleIs
     removeItem(key){if(storageThrows)throw Error('Storage blocked');store.delete(key);}
   };
   const location={origin:'http://127.0.0.1:8004',pathname:'/',search:deepLink,assign(){}};
+  const objectUrls=[];
   const window={RepoWorldRenderer:Renderer,REPOWORLD_COLORS:{frontend:'#88ccff'},REPOWORLD_DISTRICTS:{frontend:{name:'Frontend Boulevard'},api:{name:'API Heights'}},
+    URL:{createObjectURL(){const uri='blob:repoworld-qa';objectUrls.push(uri);return uri;},revokeObjectURL(){}},
+    confirm(){return true;},
     setTimeout(){return 1;},clearTimeout(){},location,localStorage,navigator:{clipboard:{async writeText(value){copied.push(value);}}}};
-  const sandbox={document,window,fetch:fetchStub,console,location,URLSearchParams,URL,
+  const sandbox={document,window,fetch:fetchStub,console,location,URLSearchParams,URL,Blob,
     clearTimeout(){},setTimeout(fn){fn();return 1;},encodeURIComponent,Response};
   vm.runInNewContext(browserIssueSource,sandbox);
   vm.runInNewContext(issueNotesSource,sandbox);
@@ -126,7 +131,7 @@ function makeApp({authenticated=true,active=true,assistantResult=null,multipleIs
   vm.runInNewContext(source,sandbox);
   const flush=()=>new Promise(resolve=>setImmediate(resolve));
   async function boot(){document.onload();for(let i=0;i<4;i++)await flush();}
-  return {document,window,el,layers,compassTabs,calls,copied,store,boot,get renderer(){return renderer;}};
+  return {document,window,el,layers,compassTabs,calls,copied,store,objectUrls,boot,get renderer(){return renderer;}};
 }
 test('new visitors land directly on Add GitHub repository, without signing in',async()=>{
   const ui=makeApp({authenticated:false,active:false});await ui.boot();
@@ -779,4 +784,49 @@ test('offline backup is opt-in, clearable and disabled when storage is blocked',
   working.el('clearOfflineCity').listeners.click();
   assert.equal(working.store.has('repoworld:offline-city:v1'),false);
   assert.equal(working.el('openOfflineCityMenu').hidden,true);
+});
+
+test('portable map download is manually triggered, uses public JSON and never calls the network',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  ui.el('saveOfflineCity').listeners.click();
+  const before=ui.calls.length;
+  assert.equal(ui.el('downloadOfflineCity').hidden,false);
+  ui.el('downloadOfflineCity').listeners.click();
+  assert.equal(ui.objectUrls.length,1);
+  assert.equal(ui.document.body.children[0].download,'repoworld-testowner-demo-city.json');
+  assert.equal(ui.document.body.children[0].clicked,true);
+  assert.equal(ui.calls.length,before);
+});
+test('portable public map file restores a city in another empty browser without provider calls',async()=>{
+  const first=makeApp({active:true});await first.boot();
+  first.el('saveOfflineCity').listeners.click();
+  const publicText=first.window.RepoWorldOfflineCity.exportText(first.window.localStorage);
+  const other=makeApp({active:false});await other.boot();
+  const input=other.el('offlineCityFile');
+  other.el('restoreOfflineCityEmpty').listeners.click();
+  assert.equal(input.clicked,true);
+  input.files=[{size:publicText.length,text:async()=>publicText}];
+  const before=other.calls.length;
+  await input.listeners.change();
+  assert.match(other.el('cityStatusText').textContent,/LOCAL OFFLINE PREVIEW/);
+  assert.equal(other.renderer.graph.url,'https://github.com/testowner/demo-city');
+  assert.ok(other.store.has('repoworld:offline-city:v1'));
+  assert.equal(other.calls.length,before);
+  assert.equal(input.value,'');
+});
+test('invalid portable files and blocked browser storage leave the current city untouched',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  const input=ui.el('offlineCityFile'),original=ui.renderer.graph;
+  input.files=[{size:32,text:async()=>'{invalid-json'}];
+  await input.listeners.change();
+  assert.equal(ui.renderer.graph,original);
+  assert.equal(ui.store.has('repoworld:offline-city:v1'),false);
+  const blocked=makeApp({active:true,storageThrows:true});await blocked.boot();
+  const saved=makeApp({active:true});await saved.boot();saved.el('saveOfflineCity').listeners.click();
+  const text=saved.window.RepoWorldOfflineCity.exportText(saved.window.localStorage);
+  const file=blocked.el('offlineCityFile');file.files=[{size:text.length,text:async()=>text}];
+  await file.listeners.change();
+  assert.equal(blocked.renderer.graph.name,'Demo City');
+  assert.equal(blocked.store.has('repoworld:offline-city:v1'),false);
+  assert.equal(blocked.calls.filter(c=>c.url.endsWith('/assistant')||c.url==='/api/my-repos').length,0);
 });
