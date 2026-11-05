@@ -7,16 +7,20 @@ User-controlled repo URLs and user-supplied source paths are never fetched.
 from __future__ import annotations
 
 import base64
+from io import BytesIO
 import json
 import os
 import time
 from pathlib import PurePosixPath
 import re
+import zipfile
 from urllib.parse import quote
 
 import httpx
 
 from .ai import _complete, _extract_json, MODEL, has_key
+from .archive_import import (_valid_path, MAX_ARCHIVE_BYTES, MAX_ARCHIVE_ENTRIES,
+                             MAX_ARCHIVE_EXPANDED_BYTES)
 from .github import GH_API, RepoError, parse_repository
 from .graph import SOURCE_SUFFIXES, group_for_file
 from .intelligence import find_modules, impact_trace
@@ -182,6 +186,112 @@ def _source_excerpt(content: str, cues: str) -> tuple[str,int,int]:
     return excerpt,start+1,max(start+1,end)
 
 
+async def _read_public_archive_sources(graph: dict, paths: list[str], *,
+                                       client: httpx.AsyncClient | None=None,
+                                       cues: str='', issue: dict | None=None) -> list[dict]:
+    """Retrieve bounded real public HEAD source from GitHub without REST quota.
+
+    Only used in the explicit free demo with no GitHub token. The archive is
+    unpinned, so evidence MUST NOT be presented as a verified commit SHA.
+    Treat ZIP paths/bytes and issue text as untrusted; never execute code.
+    """
+    owner,repo=parse_repository(str(graph.get('url','')))
+    own=client is None
+    if own:
+        client=httpx.AsyncClient(timeout=httpx.Timeout(25,connect=6),follow_redirects=False)
+    assert client is not None
+    archive_url=f'https://codeload.github.com/{quote(owner,safe="")}/{quote(repo,safe="")}/zip/HEAD'
+    try:
+        try:
+            async with client.stream('GET',archive_url,
+                                     headers={'Accept':'application/zip','User-Agent':'RepoWorld/0.9.10'},
+                                     timeout=httpx.Timeout(25,connect=6),follow_redirects=False) as response:
+                if response.status_code!=200:
+                    return []
+                length=response.headers.get('content-length','')
+                if length.isdigit() and int(length)>MAX_ARCHIVE_BYTES:
+                    return []
+                payload=bytearray()
+                async for chunk in response.aiter_bytes():
+                    if len(payload)+len(chunk)>MAX_ARCHIVE_BYTES:
+                        return []
+                    payload.extend(chunk)
+        except httpx.RequestError:
+            return []
+        if len(payload)<4 or payload[:4]!=b'PK\x03\x04':
+            return []
+        try:
+            with zipfile.ZipFile(BytesIO(payload)) as archive:
+                infos=archive.infolist()
+                if len(infos)>MAX_ARCHIVE_ENTRIES:return []
+                roots={x.filename.split('/',1)[0] for x in infos if '/' in x.filename}
+                if len(roots)!=1:return []
+                root=next(iter(roots))
+                if not root.lower().startswith(repo.lower()+'-'):return []
+                available={}
+                expanded=0
+                for info in infos:
+                    if info.is_dir():continue
+                    expanded+=info.file_size
+                    if expanded>MAX_ARCHIVE_EXPANDED_BYTES:return []
+                    path=_valid_path(info,root)
+                    if path and _safe_file_path(path) and 0<info.file_size<=120_000:
+                        available[path]=info
+                if not available:return []
+                saved={p for n in graph.get('nodes',[])[:72] if isinstance(n,dict)
+                       for p in (n.get('fileIndex') or n.get('files') or [])[:240]
+                       if _safe_file_path(p)}
+                allowed=set(available)
+                explicit=set()
+                candidates=[]
+                if issue:
+                    for match in (issue.get('matches') or [])[:8]:
+                        if isinstance(match,dict) and match.get('confidence')=='referenced':
+                            path=match.get('path')
+                            if path in allowed and path not in candidates:
+                                candidates.append(path);explicit.add(path)
+                    for score,path in rank_issue_paths(sorted(allowed),issue):
+                        if score>0 and path not in candidates:candidates.append(path)
+                        if len(candidates)>=MAX_DISCOVERY_FETCHES+3:break
+                # Do not let arbitrary issue/user paths trigger reads outside
+                # the stored import or the current real archive's file index.
+                for path in paths:
+                    if path in allowed and path in saved and path not in candidates:
+                        candidates.append(path)
+                candidates=candidates[:MAX_DISCOVERY_FETCHES if issue else MAX_FILES]
+                rank={p:score for score,p in rank_issue_paths(candidates,issue)} if issue else {}
+                results=[]
+                for path in candidates:
+                    info=available[path]
+                    if info.compress_size<1 or info.file_size>500*info.compress_size:
+                        continue
+                    try:data=archive.read(info)
+                    except (OSError,ValueError,RuntimeError,zipfile.BadZipFile):
+                        continue
+                    if len(data)>120_000:continue
+                    content=data.decode('utf-8',errors='replace')
+                    if '\x00' in content:continue
+                    symbols=live_symbol_matches(content,issue) if issue else []
+                    score=rank.get(path,0)
+                    kind=('symbol' if symbols else 'explicit-path' if path in explicit
+                          else 'path-hint' if score>0 else 'unverified')
+                    excerpt,start,end=_source_excerpt(redact_public_source(content),cues)
+                    results.append({'file':path,'content':excerpt,'lineStart':start,'lineEnd':end,
+                                    'commit':None,'truncated':len(excerpt)<len(content),
+                                    'matchedSymbols':symbols,'matchKind':kind,'pathScore':score})
+                    if issue and len([r for r in results if r['matchKind']=='symbol'])>=2:
+                        break
+                if issue:
+                    results.sort(key=lambda r:(-int(r['matchKind']=='symbol'),
+                                        -len(r['matchedSymbols']),-int(r['matchKind']=='explicit-path'),
+                                        -r['pathScore'],r['file']))
+                return results[:MAX_FILES]
+        except (zipfile.BadZipFile,zipfile.LargeZipFile,OSError):
+            return []
+    finally:
+        if own:await client.aclose()
+
+
 async def read_public_sources(graph: dict, paths: list[str], *, client: httpx.AsyncClient|None=None,
                               cues: str='', issue: dict|None=None) -> list[dict]:
     """Fetch bounded source excerpts from a *verified public* GitHub commit.
@@ -192,6 +302,10 @@ async def read_public_sources(graph: dict, paths: list[str], *, client: httpx.As
     No paths or network hosts from arbitrary issue text are requested.
     """
     if graph.get('source')!='github' or (not paths and not issue):return []
+    if os.getenv('REPOWORLD_EPHEMERAL_DEMO')=='1' and not os.getenv('GITHUB_TOKEN','').strip():
+        # Source evidence in the free demo must remain usable when Render's
+        # shared GitHub API IP is exhausted. Use one bounded public archive.
+        return await _read_public_archive_sources(graph,paths,client=client,cues=cues,issue=issue)
     owner,repo=parse_repository(str(graph.get('url','')))
     branch=str(graph.get('branch') or 'main')
     if len(branch)>150 or any(c in branch for c in '?#\\\x00'):
