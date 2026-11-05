@@ -1,0 +1,58 @@
+name: RepoWorld One-Time Live AI Evidence
+
+on:
+  push:
+    branches:
+      - qa/hosted-evidence-20261105
+
+permissions:
+  contents: read
+
+jobs:
+  hosted-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install smoke-test runtime
+        run: python -m pip install -r requirements.txt
+      - name: Verify fully deployed backend now reports configured AI
+        run: |
+          python - <<'PY'
+          import httpx
+          import time
+          origin='https://repoworld-3b9e.onrender.com'
+          for attempt in range(7):
+              try:
+                  r=httpx.get(origin+'/api/ready',timeout=45,follow_redirects=False)
+                  if r.status_code==200 and r.json().get('ready') is True:
+                      print('PASS Render backend ready')
+                      break
+              except (httpx.HTTPError,ValueError):
+                  pass
+              if attempt<6:
+                  time.sleep(8)
+          else:
+              raise SystemExit('FAIL Backend not ready; no provider inference attempted.')
+          r=httpx.get(origin+'/api/status',timeout=30,follow_redirects=False)
+          if r.status_code!=200:
+              raise SystemExit('FAIL Public AI configuration status unavailable.')
+          data=r.json()
+          if data.get('aiConfigured') is not True:
+              raise SystemExit('FAIL BharatCode key is NOT active in the current Render process; no model call attempted.')
+          print('PASS BharatCode API key active in Render process (value never inspected)')
+          PY
+      - name: Verify genuine model completion and fetched public source citations
+        run: |
+          python scripts/smoke_hosted.py https://repoworld-3b9e.onrender.com \
+            --import-repo pallets/itsdangerous \
+            --verify-live-ai --require-source-evidence --allow-browser-issues-fallback
+      - name: Explain the evidence boundary
+        if: always()
+        run: |
+          echo 'No token, cookie, source excerpt, prompt, or AI answer was printed.'
+          echo 'Success requires genuine mode=ai AND fetched source-excerpt citations.'
+          echo 'A rate-limited GitHub issue feed is not represented as server-verified.'
