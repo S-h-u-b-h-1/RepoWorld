@@ -1,34 +1,39 @@
-# Render Blueprint example. Persistent disks require an eligible paid service.
-# Render sets RENDER_EXTERNAL_URL automatically; use APP_BASE_URL only for a custom domain.
-# Set the server-side API key in the Render dashboard (never in source).
+# FREE hackathon preview. Render Free web services lose SQLite state on spin-down,
+# restart, and redeploy, and may take ~1 minute to wake after 15 minutes idle.
+# No paid disk, database, or paid instance is provisioned by this blueprint.
+# Live BharatCode is OPTIONAL until its secret is added to the Render dashboard.
 services:
   - type: web
     name: repoworld
     runtime: python
-    plan: starter
+    plan: free
     region: singapore
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
     healthCheckPath: /api/ready
     autoDeploy: false
-    disk:
-      name: repoworld-state
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.7
       - key: APP_ENV
         value: production
+      - key: REPOWORLD_EPHEMERAL_DEMO
+        value: '1'
       - key: REPOWORLD_DB_PATH
-        value: /var/data/repoworld.sqlite3
+        value: /tmp/repoworld.sqlite3
       - key: REPOWORLD_REQUIRE_MOUNTED_DB
-        value: "1"
-      - key: BHARATCODE_API_KEY
-        sync: false
+        value: '0'
       - key: REPOWORLD_AI_GLOBAL_DAILY
-        value: '65'
+        value: '15'
       - key: REPOWORLD_AI_GUEST_DAILY
-        value: '10'
+        value: '3'
+      - key: REPOWORLD_AI_GUEST_10MIN
+        value: '2'
       - key: REPOWORLD_IMPORT_GLOBAL_HOURLY
-        value: '20'
+        value: '8'
+      - key: REPOWORLD_IMPORT_GUEST_HOURLY
+        value: '2'
+      - key: REPOWORLD_ISSUES_GLOBAL_HOURLY
+        value: '12'
+      - key: REPOWORLD_ISSUES_GUEST_HOURLY
+        value: '3'

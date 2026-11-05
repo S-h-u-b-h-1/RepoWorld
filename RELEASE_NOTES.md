@@ -1,3 +1,13 @@
+## Free Render hosting profile (post-v0.9.6 publication)
+
+- Retained all v0.9.6 application UI and behavior.
+- Replaced paid Starter+disk Blueprint with **Free** Python service and explicit ephemeral SQLite mode (`REPOWORLD_EPHEMERAL_DEMO=1`).
+- Free readiness permits absent *optional* BharatCode key while retaining HTTPS and absolute SQLite requirements, strict browser Origin and CSRF, and returning `aiConfigured:false`.
+- Full/durable deployment still enforces BharatCode readiness and the mounted disk guard when requested.
+- WARNING: Render free sleeping after 15 minutes idle, restarts and redeploys erase saved cities, sessions and persistent usage budgets. This profile is for hackathon demonstrations, **not durable production or open-ended public AI usage**.
+- No cost-generating database, disk, or paid service is part of this profile. Render account bandwidth/build overages can still be billable if the workspace has a payment method.
+- Source published: https://github.com/S-h-u-b-h-1/RepoWorld. The live site must be verified separately.
+
 # RepoWorld v0.9.6 — Public launch hardening
 
 **Scope:** no visual redesign, no login, no code execution, no private repositories. Derived from v0.9.5.

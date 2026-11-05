@@ -123,9 +123,18 @@ async def ready():
         try:
             url=base_url()
             storage=_data_path()
-            if not url.startswith('https://') or not storage.is_absolute() or not has_key():
-                raise ValueError('Missing production HTTPS, storage, or AI configuration')
-            if os.getenv('REPOWORLD_REQUIRE_MOUNTED_DB') == '1' and not os.path.ismount(storage.parent):
+            ephemeral_demo = os.getenv('REPOWORLD_EPHEMERAL_DEMO') == '1'
+            if not url.startswith('https://') or not storage.is_absolute():
+                raise ValueError('Missing production HTTPS origin or absolute storage path')
+            if not has_key() and not ephemeral_demo:
+                raise ValueError('Missing BharatCode key for durable production configuration')
+            if ephemeral_demo:
+                # Intentional free-tier preview: anonymous workspaces and quotas
+                # reset when Render spins down, restarts or redeploys. The API
+                # must not quietly accept a purported mounted disk in this mode.
+                if os.getenv('REPOWORLD_REQUIRE_MOUNTED_DB') == '1':
+                    raise ValueError('Ephemeral demo cannot require mounted storage')
+            elif os.getenv('REPOWORLD_REQUIRE_MOUNTED_DB') == '1' and not os.path.ismount(storage.parent):
                 raise ValueError('Production database directory is not a mounted persistent disk')
             with _database() as db:
                 db.execute('SELECT 1').fetchone()

@@ -2,7 +2,7 @@
 
 **RepoWorld is a read-only, sign-in-free tool for exploring public GitHub repositories as interactive 3D cities.** Districts are groups of source files; buildings represent modules; illuminated links represent sampled **static imports**, not runtime traffic. Issue Radar displays GitHub's reported open issues as referenced, suggested, or unplaced locations. An optional BharatCode assistant helps developers investigate code and plan safe next steps.
 
-**Status:** v0.9.6 is a local launch-hardening update based on the previously working v0.9.5 app. Its code, tests, and simulated hosting smoke checks pass, and the source is **published on GitHub**. The application has **not yet been deployed or submitted**. The paid Render setup is prepared, not purchased or provisioned. See [RELEASE_NOTES.md](RELEASE_NOTES.md) and [ROADMAP.md](ROADMAP.md).
+**Status:** v0.9.6 source is published at https://github.com/S-h-u-b-h-1/RepoWorld; its local and mocked-hosting checks passed. The application is **not yet verified as publicly deployed or submitted**. A zero-cost Render preview is configured below (without a paid disk). See [RELEASE_NOTES.md](RELEASE_NOTES.md) and [ROADMAP.md](ROADMAP.md).
 
 ## Try RepoWorld (no account)
 
@@ -144,40 +144,19 @@ python scripts/check_production.py
 
 The production configuration preflight intentionally returns a nonzero status on a local development environment. Focused Chromium checks require Playwright and an installed Chromium executable. The import-recovery regressions and OpenWISP #717 regression use **mocked GitHub API responses**, not a live provider completion.
 
-## Public hosting (not deployed)
+## Free public hosting (ephemeral hackathon preview)
 
-`render.yaml` provides a **paid Render Starter** example in the **Singapore** region with a persistent 1 GB SQLite disk at `/var/data`, a single Python worker and `/api/ready` health checks. Render free services do **not** support persistent disks; using one would cause saved workspaces to disappear on redeploy or restart. See [Render's disk documentation](https://render.com/docs/disks).
+`render.yaml` now requests a **Render Free Python service** in Singapore, with one web worker and **no persistent disk or paid services**. This is explicitly a temporary hackathon preview. It uses an SQLite file at `/tmp/repoworld.sqlite3` and `REPOWORLD_EPHEMERAL_DEMO=1`. The preview works during an active browser session, but **all saved cities, guest sessions and usage quotas can disappear** when Render spins down after 15 minutes idle, restarts or redeploys. Returning visitors might need to import the public repository again. There is no cross-browser account synchronization.
 
-Set these secret or configuration environment variables in the Render dashboard:
+Render Free includes hosting within its monthly compute, bandwidth and build allowances. See https://render.com/docs/free. A payment method may be charged for bandwidth/build overages, so configure the workspace's billing limits and monitor usage; do not assume all possible traffic is free. It can take roughly a minute to wake from idle.
 
-| Name | Expected value |
-|---|---|
-| `APP_ENV` | `production` |
-| `APP_BASE_URL` | Optional custom-domain override; on Render the default HTTPS origin is taken from `RENDER_EXTERNAL_URL` |
-| `REPOWORLD_DB_PATH` | `/var/data/repoworld.sqlite3` on the mounted disk |
-| `REPOWORLD_REQUIRE_MOUNTED_DB` | `1` to keep readiness red without a real persistent mount |
-| `BHARATCODE_API_KEY` | Your private BharatCode model API key |
-| `GITHUB_TOKEN` | Optional server-side token with limited privileges for public repo reads |
-| `REPOWORLD_AI_GLOBAL_DAILY` | Default 65; lower if protecting a limited student quota |
-| `REPOWORLD_AI_GUEST_DAILY` | Default 10 |
-| `REPOWORLD_AI_GUEST_10MIN` | Default 4 |
-| `REPOWORLD_IMPORT_GLOBAL_HOURLY` | Default 20 |
-| `REPOWORLD_IMPORT_GUEST_HOURLY` | Default 4 |
+The public site runs in `APP_ENV=production`, with HTTPS-only cookie and CSRF protections, strict Origin checks, and bounded requests. SQLite-backed quotas remain enabled, but **do not persist across restarts in Free hosting**. The global API budgets in `render.yaml` are intentionally conservative. This free demo is not suitable for production users or long-term storage.
 
-In production, SQLite budgets are active automatically; locally you can opt into budget testing using `REPOWORLD_ENFORCE_BUDGETS=1`. Per-IP budgets are **off by default** because a reverse proxy may present one shared IP for many visitors. Only enable `REPOWORLD_ENABLE_IP_BUDGET=1` after verifying trusted client-IP forwarding. Add hosting edge-level bot/rate protection and monitor model costs before significant public traffic. Quotas protect costs, but they are not a substitute for full adversarial security testing.
+**Deployment:** Use Render → New → Web Service or New → Blueprint and select the public GitHub `main` branch with **Free**, no persistent disk. The checked-in Blueprint uses the free profile. Set the `BHARATCODE_API_KEY` **privately** in the Render Environment panel only if the optional live model is needed. Without it, the web app starts and labels its deterministic navigation fallback; it must never claim that model inference ran. An optional `GITHUB_TOKEN` can improve public GitHub API limits, but is not required.
 
-Use `python scripts/check_production.py` before deploying (configuration-only; it does not probe GitHub, BharatCode or Render). When Render is connected and the public source repository exists, create the Blueprint using the checked-in `render.yaml` and confirm the paid disk plan before approving any charges. Add the BharatCode key directly in Render Environment settings; never upload the local `.env` file. A successful first deploy should return `/api/ready` HTTP 200; if it does not, inspect the actual disk mount rather than suppressing the safeguard.
+Do not set `APP_BASE_URL` to a local address in Render: the platform supplies `RENDER_EXTERNAL_URL` (HTTPS). The free `/api/ready` checks HTTPS, an absolute SQLite path and DB connectivity without requiring a paid disk or optional AI key. Durable production still requires a real mount and model key (unless the explicit free-demo flag is set). Check the service status with `python scripts/smoke_hosted.py https://YOUR-SERVICE.onrender.com`; `--import-repo openwisp/openwisp-utils` additionally checks live GitHub importing and Issue Radar but spends GitHub API quota. Test BharatCode separately after setting the private key. The hostname is public only when Render confirms deployment.
 
-After first deploy:
-
-```bash
-python scripts/smoke_hosted.py https://YOUR-SERVICE.onrender.com
-python scripts/smoke_hosted.py https://YOUR-SERVICE.onrender.com --import-repo openwisp/openwisp-utils
-```
-
-The second command spends public GitHub import quota; neither command calls BharatCode AI. Verify a real AI answer manually on the deployed site. The hosted smoke script rejects non-HTTPS URLs unless `--allow-local` is explicitly requested for localhost testing.
-
-For GitHub publication: create an empty public `RepoWorld` repository at https://github.com/new, push only the inspected source directory, and confirm that `.env`, `.data`, `.venv`, `__pycache__` and local history are not present. GitHub source publication and Render deployment have not yet been performed here. A passing config check does **not** establish that the public website has been deployed or verified. After deploying, test HTTPS, cookie isolation across browsers, public import, Issue Radar, real BharatCode completion, API budgets, persistence after a restart, and mobile interaction.
+For an entirely free student demo, do **not** create a Starter service, attach a paid disk, or enable paid add-ons. Render free Postgres expires after 30 days; it is not configured for this release. A future free external database may add durable storage, but needs new code and separate validation.
 
 ## Hackathon submission
 
