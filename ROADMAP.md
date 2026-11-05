@@ -34,6 +34,12 @@
 - Preserve provenance distinctions: path referenced by issue, browser-only unverified suggestion, fetched source excerpt and AI suggestion are not equivalent. Switching issues cannot copy a previous issue's guide.
 - No repository token, sign-in, GitHub posting, server persistence or additional inference required.
 
+## Browser issue lead to public source (v0.9.12)
+- Explicit opt-in **Inspect public source** in the existing issue drawer when the GitHub issue feed comes from the browser due to server provider quota.
+- Source inspection is a separate saved-repo/CSRF-scoped API with strict body and hourly source I/O budgets, bounded archive/tree retrieval, and no AI call or automatic request. It never verifies the browser issue or upgrades a speculative city pin.
+- Copy notes retain independently fetched source references, marked as such; source excerpts are code facts but not issue causality. Empty/error states remain honest.
+- Browser-only and regular source workflows have distinct provenance; full hosted real-GitHub test remains an outstanding release gate.
+
 ## Open release gates (not assumed complete)
 1. **v0.9.8 live check:** GitHub CI, Render deployed commit, public /api/health and /api/ready, and a real browser Issue Radar test. Local fixture tests cannot certify GitHub CORS/network access for every visitor.
 2. **Authenticated provider reliability:** Add a least-privilege server-side GITHUB_TOKEN privately on Render if source-verified issue investigations must work when the server's shared GitHub IP is rate-limited; verify behavior and 401/403 handling.

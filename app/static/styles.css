@@ -346,3 +346,16 @@
 .issue-copy-notes:hover,.issue-copy-notes:focus-visible{border-color:#b7ccd9;background:#303942}
 .issue-copy-notes:focus-visible{outline:2px solid #b1d9fd;outline-offset:2px}
 @media(max-width:620px){.issue-ai-actions .issue-copy-notes{min-height:42px;flex:1}}
+
+/* v0.9.12: explicit, bounded source check for browser-only issue feeds. */
+.issue-inspect-source{border:1px solid #668896;background:#233541;color:#e6f1fb;font-size:13px!important;line-height:1.45;text-align:center}
+.issue-inspect-source:hover,.issue-inspect-source:focus-visible{background:#304857;border-color:#a1c9da}
+.issue-inspect-source:disabled{opacity:.60;cursor:progress}
+.issue-inspect-source:focus-visible{outline:2px solid #b1d9fd;outline-offset:2px}
+.source-lead-card{padding:11px 12px;margin:9px 0;border:1px solid #484d59;border-radius:8px;background:#22272d;overflow-wrap:anywhere}
+.source-lead-card>a{font-size:13px;font-weight:600;color:#c4e4fa}
+.source-lead-meta{font-size:12px;line-height:1.55;color:#becbd8;margin:8px 0 4px}
+.source-lead-preview{margin-top:8px;font-size:12px}
+.source-lead-preview summary{cursor:pointer;color:#c4d5e5;padding:6px 0}
+.source-lead-preview pre{font-size:11.5px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto;padding:9px;background:#14191d;border-radius:5px}
+@media(max-width:620px){.issue-inspect-source{min-height:42px;flex:1}}

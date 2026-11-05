@@ -32,6 +32,8 @@ jobs:
         run: python -m playwright install --with-deps chromium
       - name: Exercise synthetic dense city at desktop and mobile sizes
         run: python -m app.tests.layout_browser_smoke
+      - name: Exercise browser-only issues and independent source probe
+        run: python -m app.tests.browser_issues_smoke
       - name: Upload offline screenshots for review
         if: always()
         uses: actions/upload-artifact@v4

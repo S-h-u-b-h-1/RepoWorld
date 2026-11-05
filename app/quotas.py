@@ -104,3 +104,17 @@ def reserve_refresh(user_id: str) -> None:
         Budget('Issue refresh global hourly','global',3600, _env_int('REPOWORLD_ISSUES_GLOBAL_HOURLY', 50)),
         Budget('Issue refresh browser hourly',user_id,3600, _env_int('REPOWORLD_ISSUES_GUEST_HOURLY', 5)),
     ])
+
+
+def reserve_source_probe(user_id: str) -> None:
+    """Bound expensive on-demand source ZIP/REST reads from unverified leads.
+
+    This is independent of AI and Issue Radar quotas. Browser-only issue text
+    is not verified by this reservation; it merely pays for public-source I/O.
+    """
+    consume([
+        Budget('Source lookup global hourly', 'global', 3600,
+               _env_int('REPOWORLD_SOURCE_GLOBAL_HOURLY', 8)),
+        Budget('Source lookup browser hourly', user_id, 3600,
+               _env_int('REPOWORLD_SOURCE_GUEST_HOURLY', 2)),
+    ])

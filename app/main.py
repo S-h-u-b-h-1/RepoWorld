@@ -1,4 +1,4 @@
-"""RepoWorld v0.9.11: city, anonymous sharing, and public-launch safeguards."""
+"""RepoWorld v0.9.12: city, anonymous sharing, and public-launch safeguards."""
 from __future__ import annotations
 
 from collections import defaultdict, deque
@@ -13,18 +13,18 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .ai import answer_question, build_static_tour, has_key, make_ai_tour
-from .assistant import guide_question
+from .assistant import guide_question, read_public_sources, _links
 from .issues import fetch_issue_radar
 from .auth import (choose_repo, delete_repo, ensure_guest_session, repo_summaries,
                    require_user, save_repo, session_user, stored_repo)
 from .demo import build_demo
 from .github import RepoError, get_repository_graph, parse_repository
 from .intelligence import find_modules, impact_trace
-from .quotas import reserve_ai, reserve_import, reserve_refresh
+from .quotas import reserve_ai, reserve_import, reserve_refresh, reserve_source_probe
 from .request_limits import RequestBodyLimit
 
 APP_ROOT = Path(__file__).resolve().parent
-app = FastAPI(title="RepoWorld", description="Explore a repository as a living city", version="0.9.11", docs_url="/api/docs", redoc_url=None)
+app = FastAPI(title="RepoWorld", description="Explore a repository as a living city", version="0.9.12", docs_url="/api/docs", redoc_url=None)
 app.add_middleware(RequestBodyLimit)
 logger = logging.getLogger("repoworld.import")
 app.mount("/static", StaticFiles(directory=str(APP_ROOT / "static")), name="static")
@@ -54,6 +54,12 @@ class DeveloperQuestion(BaseModel):
     nodeId: str | None = Field(default=None, max_length=450)
     issueNumber: int | None = Field(default=None, ge=1)
     history: list[dict[str, str]] = Field(default_factory=list, max_length=6)
+
+
+class UnverifiedSourceLead(BaseModel):
+    """Bounded browser-provided issue text: an unverified search cue, not GitHub evidence."""
+    title: str = Field(min_length=3, max_length=240)
+    body: str = Field(default="", max_length=1800)
 
 
 @app.middleware("http")
@@ -112,7 +118,7 @@ async def home():
 @app.get("/api/health")
 async def health():
     """Liveness probe; does not imply the production setup is safe."""
-    return {"ok": True, "product": "RepoWorld", "version": "0.9.11"}
+    return {"ok": True, "product": "RepoWorld", "version": "0.9.12"}
 
 
 @app.get("/api/ready")
@@ -309,6 +315,43 @@ async def issue_radar(request: Request, repo_id: str, refresh: bool = Query(defa
     graph = stored_repo(uid, repo_id)
     if refresh: reserve_refresh(uid)
     return await fetch_issue_radar(graph, use_cache=not refresh)
+
+
+@app.post("/api/my-repos/{repo_id}/source-lead")
+async def inspect_unverified_source_lead(request: Request, repo_id: str, payload: UnverifiedSourceLead):
+    """Explicitly inspect public source for browser-fetched, unverified issue text.
+
+    This does NOT authenticate an issue, call the model, change issue markers,
+    or treat a filename/identifier match as defect reproduction.
+    """
+    _body_limit(request, 5_000)
+    _profile, uid, _csrf = require_user(request, mutation=True)
+    graph = stored_repo(uid, repo_id)
+    if graph.get('source') != 'github':
+        raise RepoError('Public GitHub source inspection requires a real imported repository.', 422)
+    _limit(request, f"source-lead:{uid}", count=3, window=600)
+    reserve_source_probe(uid)
+    title=payload.title.strip()
+    if len(title)<3:
+        raise RepoError('Provide at least three characters from the issue title.',422)
+    # This is never retrieved or validated issue metadata. Use title/body solely
+    # as lexical source-search cues and reject any supplied issue locations.
+    lead={'title':title, 'body':payload.body[:1800], 'matches':[]}
+    excerpts=await read_public_sources(graph, [], cues=title+' '+payload.body[:1000], issue=lead)
+    links=_links(graph, [item['file'] for item in excerpts], excerpts)
+    sources=[]
+    for excerpt,link in zip(excerpts,links):
+        sources.append({**link, 'matchKind':excerpt.get('matchKind','unverified'),
+            'matchedSymbols':excerpt.get('matchedSymbols',[])[:4],
+            'preview':excerpt.get('content','')[:900]})
+    scope=('commit-pinned' if any(item.get('commit') for item in excerpts) else
+           'live-branch' if excerpts else 'unavailable')
+    return {'mode':'source-lead','issueVerified':False,'assistantUsed':False,
+            'sourceFilesRead':len(excerpts),'sourceScope':scope,'sources':sources,
+            'disclosure':('Issue title/body came from the visitor browser and were not checked '
+                'against GitHub by this server. Source files were fetched separately from '
+                'the public repository; relevance, issue state, and the reported defect remain unverified. '
+                'No BharatCode model was called.')}
 
 
 @app.post("/api/my-repos/{repo_id}/assistant")

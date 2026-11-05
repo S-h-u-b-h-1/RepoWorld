@@ -76,10 +76,14 @@
       }else label='Browser-fetched issue suggestion, unverified by server';
       lines.push('- '+label+': '+markdown(place.path||place.nodeId,260));
     }
+    const inspectedLead=browserFallback&&guide?.mode==='source-lead'&&
+      guide.issueVerified===false&&guide.assistantUsed===false&&guide.sourceFilesRead>0;
     lines.push('','## Investigation guidance');
     if(browserFallback){
       lines.push('Issue feed was fetched directly by this browser and not independently checked by RepoWorld.');
-      lines.push('No server-side issue investigation or source verification was performed.');
+      lines.push(inspectedLead
+        ?'Public source files were fetched separately, but the issue itself was not server-verified. No AI or tests ran.'
+        :'No server-side issue investigation or source verification was performed.');
     }else if(guide?.mode==='ai'){
       lines.push('AI-generated suggestion (not verified): '+markdown(guide.answer,680));
     }else if(guide?.mode==='navigation'){
@@ -96,16 +100,20 @@
     };
     pushList('### Suggested investigation steps',guide?.steps,4);
     pushList('### Proposed tests (not run)',guide?.tests,3);
-    const sources=browserFallback?[]:(Array.isArray(guide?.sources)?guide.sources:[])
+    const sources=browserFallback&&!inspectedLead?[]:(Array.isArray(guide?.sources)?guide.sources:[])
       .map(e=>validSource(e,base)).filter(Boolean).slice(0,4);
     lines.push('','## Source evidence');
     if(sources.length){
       for(const source of sources){
-        lines.push('- Fetched source excerpt, review before citing: '+
+        lines.push('- '+(browserFallback
+          ?'Separately fetched public source; issue not verified: '
+          :'Fetched source excerpt, review before citing: ')+
           '['+markdown(source.path,260)+']('+source.url+')');
       }
     }else lines.push('- No fetched source excerpts were confirmed for this issue.');
-    lines.push('','Scope: '+(browserFallback?'browser-only issue feed; source unverified':
+    lines.push('','Scope: '+(browserFallback?
+      inspectedLead?'browser-only issue feed; public source independently inspected; issue not verified':
+      'browser-only issue feed; source unverified':
       guide?.sourceScope==='commit-pinned'?'linked sources may be commit-pinned':
       guide?.sourceScope==='live-branch'?'public HEAD/branch evidence can change':
       'sampled repository paths only'));

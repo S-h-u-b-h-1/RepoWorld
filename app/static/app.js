@@ -1,4 +1,4 @@
-/* RepoWorld v0.9.11: minimal city, source-scoped issue guide, and shareable public-repository entry points. */
+/* RepoWorld v0.9.12: minimal city, source-scoped issue guide, and shareable public-repository entry points. */
 (function(){
   'use strict';
   const $=id=>document.getElementById(id);
@@ -484,8 +484,12 @@
     $('closeIssueDrawer').focus();
   }
   function showIssueDetail(issue,nodeId){
+    // A pending independent source lookup may belong to an earlier issue.
+    state.issueInsightRevision++;
     state.issueSelectedNumber=issue.number;
     state.issueNotesResult=null;
+    $('issueInspectSource').hidden=!(state.radar?.browserFallback&&state.graph?.source==='github');
+    $('issueInspectSource').disabled=false;
     const match=(issue.matches||[]).find(m=>m.nodeId===nodeId);
     setText('issueDrawerHeading',issue.title||'Untitled GitHub issue');
     setText('issueDetailIndex','OPEN ISSUE #'+issue.number);
@@ -653,7 +657,7 @@
       state.issueNotesResult=null;
       $('issueRetry').hidden=true;$('issueFollowUp').hidden=false;
       setText('issueAiHeading','BROWSER GITHUB FEED · UNVERIFIED');
-      setText('issueAiResult','The issue title and description came from your browser’s public GitHub request. RepoWorld’s server has not independently checked this report or inspected its source. Open the original issue to verify it. Enable a private server-side GITHUB_TOKEN for source-scoped issue investigation.');
+      setText('issueAiResult','This issue report was fetched directly by your browser and was not independently checked by RepoWorld. You can inspect public repository source separately using the button below, without claiming the issue is confirmed or calling BharatCode.');
       return;
     }
     const repoId=state.activeId,number=issue.number,key=`${repoId}:${number}:${nodeId||''}`,serial=++state.issueInsightRevision;
@@ -673,6 +677,84 @@
       setText('issueAiHeading','ISSUE GUIDE · UNAVAILABLE');
       setText('issueAiResult',e.message+' The original issue remains available on GitHub.');
       $('issueRetry').hidden=false;$('issueFollowUp').hidden=false;
+    }
+  }
+  function renderIndependentSourceLead(result){
+    if(result?.mode!=='source-lead'||result.issueVerified!==false||result.assistantUsed!==false){
+      throw new Error('Unexpected public-source response');
+    }
+    state.issueNotesResult=result;
+    const container=$('issueAiResult');container.replaceChildren();
+    setText('issueAiHeading','PUBLIC SOURCE · ISSUE UNVERIFIED');
+    const warning=document.createElement('p');warning.className='insight-warning';
+    warning.textContent='The browser-fetched GitHub issue report is not verified by this server. Files below were fetched separately from the saved public repository. A file or identifier match does not prove the reported problem exists.';
+    container.append(warning);
+    const sources=(Array.isArray(result.sources)?result.sources:[])
+      .filter(entry=>entry?.evidence==='excerpt'&&
+        typeof entry.url==='string'&&entry.url.startsWith('https://github.com/')).slice(0,4);
+    if(!sources.length){
+      const text=document.createElement('p');text.className='insight-lead';
+      text.textContent='No public source excerpts were found within the bounded lookup. Open the original GitHub issue to investigate manually.';
+      container.append(text);
+    }else{
+      const section=document.createElement('section');section.className='insight-section';
+      const heading=document.createElement('h3');heading.textContent='INDEPENDENTLY FETCHED PUBLIC SOURCE';section.append(heading);
+      for(const entry of sources){
+        const wrapper=document.createElement('div');wrapper.className='source-lead-card';
+        const link=document.createElement('a');link.href=entry.url;link.target='_blank';
+        link.rel='noopener noreferrer';link.textContent=String(entry.file||'Public source').slice(0,260)+' ↗';
+        wrapper.append(link);
+        const detail=document.createElement('p');detail.className='source-lead-meta';
+        const matched=Array.isArray(entry.matchedSymbols)?entry.matchedSymbols.slice(0,3)
+          .filter(s=>typeof s==='string').map(s=>s.slice(0,60)):[];
+        detail.textContent=entry.matchKind==='symbol'&&matched.length?
+          'Identifier text found in fetched file: '+matched.join(', ')+'. Issue impact unverified.':
+          'Public file inspected; relevance to the issue remains unverified.';
+        wrapper.append(detail);
+        if(typeof entry.preview==='string'&&entry.preview.trim()){
+          const preview=document.createElement('details');preview.className='source-lead-preview';
+          const summary=document.createElement('summary');summary.textContent='View bounded source excerpt';
+          const pre=document.createElement('pre');pre.textContent=entry.preview.slice(0,900);
+          preview.append(summary,pre);wrapper.append(preview);
+        }
+        section.append(wrapper);
+      }
+      container.append(section);
+    }
+    const scope=document.createElement('p');scope.className='insight-disclosure';
+    scope.textContent=result.sourceScope==='commit-pinned'
+      ?'Source links may be pinned to a Git commit, but the browser issue report was not independently verified. No AI or tests ran.'
+      :result.sourceScope==='live-branch'
+        ?'Public HEAD/branch source can change. The report was not independently verified, and no AI or tests ran.'
+        :'Source evidence unavailable. No AI, defect reproduction or tests ran.';
+    container.append(scope);
+    $('issueFollowUp').hidden=false;$('issueRetry').hidden=true;
+  }
+  async function inspectUnverifiedIssueSource(){
+    if(!state.radar?.browserFallback||state.graph?.source!=='github'||$('issueDrawer').hidden)return;
+    const issue=issueFor(state.issueSelectedNumber);
+    if(!issue)return;
+    const repoId=state.activeId,number=issue.number,serial=++state.issueInsightRevision;
+    const button=$('issueInspectSource');button.disabled=true;
+    setText('issueAiHeading','PUBLIC SOURCE · LOOKING UP');
+    setText('issueAiResult','Reading a bounded sample of public GitHub source. This does not verify the issue or call BharatCode.');
+    try{
+      const result=await post('/api/my-repos/'+encodeURIComponent(repoId)+'/source-lead',{
+        title:String(issue.title||'').slice(0,240),
+        body:String(issue.body||issue.snippet||'').slice(0,1800)
+      });
+      if(repoId!==state.activeId||state.issueSelectedNumber!==number||
+          serial!==state.issueInsightRevision||$('issueDrawer').hidden)return;
+      renderIndependentSourceLead(result);
+    }catch(error){
+      if(repoId!==state.activeId||state.issueSelectedNumber!==number||
+          serial!==state.issueInsightRevision||$('issueDrawer').hidden)return;
+      state.issueNotesResult=null;
+      setText('issueAiHeading','PUBLIC SOURCE · UNAVAILABLE');
+      setText('issueAiResult',error.message+' The browser issue report remains unverified; open the original issue on GitHub.');
+    }finally{
+      if(repoId===state.activeId&&state.issueSelectedNumber===number&&
+          serial===state.issueInsightRevision)button.disabled=false;
     }
   }
   async function copyInvestigationNotes(){
@@ -873,6 +955,7 @@
     $('closeIssueDrawer').addEventListener('click',hideIssueDrawer);
     $('issueRetry').addEventListener('click',()=>{const issue=issueFor(state.issueSelectedNumber);if(issue){state.issueInsightCache.delete(`${state.activeId}:${issue.number}:${state.issueOpenNode||''}`);explainIssue(issue,state.issueOpenNode);}});
     $('issueFollowUp').addEventListener('click',followUpIssue);
+    $('issueInspectSource').addEventListener('click',inspectUnverifiedIssueSource);
     $('issueCopyNotes').addEventListener('click',copyInvestigationNotes);
     $('inspectorAsk').addEventListener('click',()=>{setAssistantContext(state.chosen,null);openFind('','ask');});
     document.querySelectorAll('[data-layer]').forEach(b=>b.addEventListener('click',()=>setLayer(b.dataset.layer)));
