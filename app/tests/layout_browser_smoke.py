@@ -134,6 +134,8 @@ async def verify(browser,width,height):
     actual=await page.evaluate("window.__TEST_SCENE__.activeDistrict")
     assert actual=="api",("District plaque click failed",width,debug,actual)
     await page.wait_for_timeout(400)
+    visibleKinds=await page.evaluate("window.__TEST_SCENE__.districtHitAreas.map(x=>x.kind)")
+    assert visibleKinds and set(visibleKinds)=={"api"},visibleKinds
     await page.screenshot(path=str(OUT/f"district-focused-{width}.png"),full_page=True)
 
     # Existing transient controls must be usable at both sizes.

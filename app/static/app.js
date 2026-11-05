@@ -112,7 +112,7 @@
       onDistrictSelect(kind){
         hideIssueDrawer();$('inspector').hidden=true;$('tourPanel').hidden=true;
         $('mapTools').hidden=true;
-        toast(kindLabel(kind)+' focused. Open Map controls and choose Overview to see the whole city.');
+        toast(kindLabel(kind)+' focused. Map controls → Overview resets.');
       }
     });}
   }

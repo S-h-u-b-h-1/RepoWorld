@@ -166,7 +166,9 @@
     }
     setSelected(id,{focus=false}={}){
       const node=this.nodes.find(n=>n.id===id);if(!node)return;
-      this.selected=id;this.activeDistrict=focus?node.kind:this.activeDistrict;
+      this.selected=id;
+      if(focus)this.activeDistrict=node.kind;
+      else if(this.activeDistrict&&node.kind!==this.activeDistrict)this.activeDistrict=null;
       if(focus){this.zoomAnchor=null;this.targetPan={x:node.x,z:node.z};this.targetDistance=Math.min(this.distance,60);}
     }
     fitDistrictDistance(district){
@@ -486,6 +488,7 @@
         const drop=this.islandVertices(d,-5.0);
         const cx=this.project(d.center.x,-2,d.center.z);
         ctx.save();
+        if(this.activeDistrict&&d.kind!==this.activeDistrict)ctx.globalAlpha=.17;
         const halo=ctx.createRadialGradient(cx.x,cx.y,0,cx.x,cx.y,Math.max(50,cx.scale*d.halfWidth*1.7));
         halo.addColorStop(0,rgba(d.color,.10));halo.addColorStop(1,rgba(d.color,0));
         ctx.fillStyle=halo;ctx.beginPath();ctx.ellipse(cx.x,cx.y,Math.max(40,cx.scale*d.halfWidth*1.9),Math.max(20,cx.scale*d.halfDepth*1.1),0,0,PI2);ctx.fill();
@@ -531,6 +534,7 @@
         const bend=7+hash('bend-'+d.kind)*4;
         const control=this.project(d.center.x*.5-d.center.z/len*bend,5.5,d.center.z*.5+d.center.x/len*bend);
         ctx.save();ctx.lineCap='round';
+        if(this.activeDistrict&&d.kind!==this.activeDistrict)ctx.globalAlpha=.13;
         const path=()=>{ctx.beginPath();ctx.moveTo(start.x,start.y);ctx.quadraticCurveTo(control.x,control.y,end.x,end.y);};
         path();ctx.strokeStyle='rgba(3,12,27,.88)';ctx.lineWidth=8;ctx.stroke();
         path();ctx.strokeStyle='rgba(79,115,152,.36)';ctx.lineWidth=5;ctx.stroke();
@@ -558,6 +562,7 @@
           const top=[[-w,h,-w],[w,h,-w],[w,h,w],[-w,h,w]].map(v=>this.project(x+v[0],v[1],z+v[2]));
           const bot=[[-w,0,-w],[w,0,-w],[w,0,w],[-w,0,w]].map(v=>this.project(x+v[0],v[1],z+v[2]));
           ctx.save();
+          if(this.activeDistrict&&d.kind!==this.activeDistrict)ctx.globalAlpha=.14;
           poly(ctx,[top[1],top[2],bot[2],bot[1]]);ctx.fillStyle=mix('#13283b',d.color,.18);ctx.fill();
           poly(ctx,[top[2],top[3],bot[3],bot[2]]);ctx.fillStyle=mix('#0b1a2c',d.color,.11);ctx.fill();
           poly(ctx,top);ctx.fillStyle=mix('#38506a',d.color,.18);ctx.fill();
@@ -572,7 +577,8 @@
       }
     }
     drawRepositoryBeacon(ctx){
-      const main=this.districts.find(d=>d.central);if(!main)return;
+      const main=this.districts.find(d=>d.central);
+      if(!main||(this.activeDistrict&&this.activeDistrict!==main.kind))return;
       // A symbolic city landmark for the repository itself, not a claimed entrypoint.
       const x=0,z=0,w=2.85,h=20.5;
       const b=[[-w,0,-w],[w,0,-w],[w,0,w],[-w,0,w]].map(v=>this.project(x+v[0],v[1],z+v[2]));
@@ -650,14 +656,15 @@
       const neighbors=this.edges.some(e=>e.a.id===this.selected&&e.b.id===n.id||e.b.id===this.selected&&e.a.id===n.id);
       const tracedDirect=this.impact?.direct.has(n.id),tracedIndirect=this.impact?.indirect.has(n.id);
       const traced=tracedDirect||tracedIndirect;
-      const dim=this.impact?!selected&&!traced:this.mode==='dependencies'&&!selected&&!neighbors;
+      const outsideFocus=Boolean(this.activeDistrict&&n.kind!==this.activeDistrict);
+      const dim=outsideFocus||(this.impact?!selected&&!traced:this.mode==='dependencies'&&!selected&&!neighbors);
       const hot=this.mode==='hotspots'&&this.hotspots.some(item=>item.id===n.id);
       const color=tracedDirect?'#efbd89':tracedIndirect?'#b6acff':hot?'#ff5d89':n.color,w=n.width,h=n.height;
       const verts=[[-w,0,-w],[w,0,-w],[w,0,w],[-w,0,w],[-w,h,-w],[w,h,-w],[w,h,w],[-w,h,w]];
       const pts=verts.map(p=>this.project(n.x+p[0],p[1],n.z+p[2]));
       const depth=this.project(n.x,h*.5,n.z).depth;
       const roof=this.project(n.x,h,n.z),base=this.project(n.x,0,n.z);
-      ctx.save();ctx.globalAlpha=dim?.30:1;
+      ctx.save();ctx.globalAlpha=outsideFocus?.14:dim?.30:1;
       const shadow=ctx.createRadialGradient(base.x,base.y,0,base.x,base.y,Math.max(14,base.scale*7));
       shadow.addColorStop(0,rgba(color,selected?.33:.17));shadow.addColorStop(1,rgba(color,0));
       ctx.fillStyle=shadow;ctx.beginPath();ctx.ellipse(base.x,base.y,Math.max(12,base.scale*7),Math.max(4,base.scale*3.4),0,0,PI2);ctx.fill();
@@ -746,7 +753,8 @@
     drawBuildingLabels(ctx,hits){
       // Avoid 60 overlapping file labels. Show district landmarks by default,
       // and reveal other names on selection, hover, or closer camera zoom.
-      const candidates=hits.filter(h=>h.selected||h.hovered||(this.impact?.direct.has(h.node.id)&&this.distance<=92)||(h.node.landmark&&this.distance<=84)||this.distance<=58)
+      const candidates=hits.filter(h=>(!this.activeDistrict||h.node.kind===this.activeDistrict)&&
+        (h.selected||h.hovered||(this.impact?.direct.has(h.node.id)&&this.distance<=92)||(h.node.landmark&&this.distance<=84)||this.distance<=58))
         .sort((a,b)=>Number(b.selected)-Number(a.selected)||Number(b.hovered)-Number(a.hovered)||Number(b.node.landmark)-Number(a.node.landmark));
       const placed=[];
       for(const h of candidates){
@@ -771,6 +779,7 @@
       this.issueHitAreas=[];
       const placed=[];
       for(const hit of hits){
+        if(this.activeDistrict&&hit.node.kind!==this.activeDistrict)continue;
         const match=this.issueMarkers.get(hit.node.id);
         if(!match||(!match.referenced&&!match.suggested&&!match.observed)||hit.dim)continue;
         const count=match.referenced+match.suggested+match.observed,hasRef=match.referenced>0||match.observed>0;
@@ -795,6 +804,7 @@
       const labels=[];this.districtHitAreas=[];
       // Leading lines identify real (heuristically classified) code districts.
       for(const d of [...this.districts].sort((a,b)=>Number(b.central)-Number(a.central))){
+        if(this.activeDistrict&&d.kind!==this.activeDistrict)continue;
         if(this.distance>=135 && !d.central && d.count<2 && !['api','test'].includes(d.kind))continue;
         if(this.width<650 && !d.central && !['api','database'].includes(d.kind))continue;
         const center=this.project(d.center.x,5,d.center.z);

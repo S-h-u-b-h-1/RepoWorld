@@ -414,3 +414,16 @@ test('visible district plaques can be clicked to focus, with issue pins retainin
   renderer.setGraph({nodes:[],edges:[]});renderer.render(2200);
   assert.equal(renderer.districtHitAreas.length,0);
 });
+
+test('district focus shows only its own plaques and issue pins until Overview reset',()=>{
+  const {renderer}=world();renderer.setGraph(graph);
+  renderer.setIssueMarkers({'src/api':{referenced:[10]},'src/db':{referenced:[11]}});
+  renderer.focusDistrict('api');
+  renderer.render(3000);
+  assert.ok(renderer.districtHitAreas.length>0);
+  assert.ok(renderer.districtHitAreas.every(p=>p.kind==='api'));
+  assert.ok(renderer.issueHitAreas.every(p=>p.nodeId==='src/api'));
+  renderer.resetCamera();renderer.render(3200);
+  assert.equal(renderer.activeDistrict,null);
+  assert.ok(renderer.districtHitAreas.some(p=>p.kind!=='api'));
+});
