@@ -98,13 +98,19 @@ async def verify(browser,width,height):
     assert not await page.evaluate("document.documentElement.scrollWidth>innerWidth"),"Horizontal overflow"
     metrics=await page.evaluate("""() => {
       const scene=window.__TEST_SCENE__;
+      // Tooltip <strong> is created on hover; measure its CSS without faking a hover.
+      const tooltip=document.getElementById('sceneTooltip');
+      const heading=document.createElement('strong');
+      tooltip.append(heading);
+      const tooltipFont=parseFloat(getComputedStyle(heading).fontSize);
+      heading.remove();
       const overlap=scene.districts.some((d,i)=>scene.districts.some((e,j)=>i<j &&
         Math.abs(d.center.x-e.center.x)<d.halfWidth+e.halfWidth+5 &&
         Math.abs(d.center.z-e.center.z)<d.halfDepth+e.halfDepth+5));
       return {moduleCount:scene.nodes.length,districtCount:scene.districts.length,
         overlap,overviewDistance:scene.overviewDistance,
         inspectorFont:parseFloat(getComputedStyle(document.querySelector('.inspector-description')).fontSize),
-        sceneFont:parseFloat(getComputedStyle(document.querySelector('.scene-tooltip strong')).fontSize)};
+        sceneFont:tooltipFont};
     }""")
     assert metrics["moduleCount"]==72 and metrics["districtCount"]>=6,metrics
     assert not metrics["overlap"],metrics
