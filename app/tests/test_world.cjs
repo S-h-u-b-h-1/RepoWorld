@@ -374,3 +374,26 @@ test('small mobile canvas suppresses sub-pixel windows and throttles idle frames
   const d=renderer.fitOverviewDistance();
   assert.ok(d<=850 && d>=110);
 });
+
+
+test('keyboard cycling selects actual imported buildings and wraps without inventing nodes',()=>{
+  const chosen=[];
+  const {renderer,events}=world({onSelect:id=>chosen.push(id)});
+  renderer.setGraph(graph);
+  assert.equal(renderer.selected,null);
+  let prevented=0;
+  events.keydown({key:']',preventDefault(){prevented++;}});
+  assert.equal(chosen.length,1);
+  assert.ok(graph.nodes.some(n=>n.id===chosen[0]));
+  assert.equal(renderer.selected,chosen[0]);
+  events.keydown({key:'[',preventDefault(){prevented++;}});
+  assert.equal(chosen.length,2);
+  assert.ok(graph.nodes.some(n=>n.id===chosen[1]));
+  assert.ok(prevented>=2);
+  const ids=new Set();
+  for(let i=0;i<graph.nodes.length;i++)ids.add(renderer.cycleModule(1).id);
+  assert.equal(ids.size,graph.nodes.length);
+  assert.equal(renderer.edges.length,graph.edges.length);
+  renderer.setGraph({nodes:[],edges:[]});
+  assert.equal(renderer.cycleModule(1),null);
+});

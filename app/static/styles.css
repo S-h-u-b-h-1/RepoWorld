@@ -317,3 +317,9 @@
 .issue-filters input{flex:1;min-width:0}.issue-filters select{max-width:205px;cursor:pointer}.issue-filters input::placeholder{color:#a4b4c6}
 .issue-filters input:focus-visible,.issue-filters select:focus-visible{outline:2px solid #b1d9fd}
 @media(max-width:620px){.issue-filters{flex-direction:column}.issue-filters select{max-width:none;width:100%}}
+
+/* v0.9.9 keyboard-accessible next/previous module navigation. */
+.building-controls{display:flex;gap:9px;margin-top:10px}
+.building-controls button{min-height:42px;flex:1;border:1px solid #4b5360;border-radius:9px;background:#22262d;color:#e3edf6;padding:10px;font-size:12px;font-weight:580;line-height:1.45}
+.building-controls button:hover{background:#333b46}
+.building-controls button:focus-visible{outline:2px solid #b1d9fd;outline-offset:2px}
