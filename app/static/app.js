@@ -119,6 +119,7 @@
     $('assistantThread').replaceChildren();addAssistantWelcome();setText('issuesTabCount','');$('issuesTabCount').hidden=true;
     showCity();initializeRenderer();
     state.renderer.setGraph(graph);state.renderer.setMode('structure');state.renderer.setTraffic?.(false);
+    populateDistrictJump();
     // Prevent renderer's default internal selection from visually highlighting the first tower.
     state.renderer.selected=null;
     $('inspector').hidden=true;$('tourPanel').hidden=true;$('mapTools').hidden=true;$('issueDrawer').hidden=true;
@@ -209,6 +210,32 @@
     }catch(e){toast('Could not refresh: '+e.message,true);}
     finally{state.busy=false;button.disabled=false;button.textContent='↻ Refresh code index';}
   }
+  function populateDistrictJump(){
+    const select=$('districtJump');select.replaceChildren();
+    const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Choose a district…';
+    select.append(placeholder);
+    for(const district of state.renderer?.getDistricts?.()||[]){
+      const option=document.createElement('option');option.value=district.kind;
+      option.textContent=`${district.name} · ${district.count} module${district.count===1?'':'s'}`;
+      select.append(option);
+    }
+    select.value='';
+  }
+  function jumpDistrict(){
+    const kind=$('districtJump').value;
+    if(kind&&state.renderer?.focusDistrict?.(kind)){
+      $('mapTools').hidden=true;
+      toast(`${kindLabel(kind)} in focus. Choose Overview to see the whole city.`);
+    }
+  }
+  function focusConnectedHub(){
+    const node=state.renderer?.focusHotspot?.();
+    if(!node){toast('No connected modules are available in this sampled graph.');return;}
+    setLayer('hotspots');
+    state.chosen=node.id;renderInspector();$('inspector').scrollTop=0;
+    $('inspector').hidden=false;$('tourPanel').hidden=true;$('mapTools').hidden=true;
+  }
+  function zoomCity(factor){state.renderer?.zoomToward?.(factor);}
   function setLayer(layer){
     state.layer=layer;state.renderer?.setMode(layer);
     document.querySelectorAll('[data-layer]').forEach(b=>b.classList.toggle('active',b.dataset.layer===layer));
@@ -790,6 +817,10 @@
     $('inspectorAsk').addEventListener('click',()=>{setAssistantContext(state.chosen,null);openFind('','ask');});
     document.querySelectorAll('[data-layer]').forEach(b=>b.addEventListener('click',()=>setLayer(b.dataset.layer)));
     $('resetCamera').addEventListener('click',()=>{state.renderer?.resetCamera();$('mapTools').hidden=true;});
+    $('districtJump').addEventListener('change',jumpDistrict);
+    $('focusHub').addEventListener('click',focusConnectedHub);
+    $('zoomOut').addEventListener('click',()=>zoomCity(1.25));
+    $('zoomIn').addEventListener('click',()=>zoomCity(.8));
     $('tourButton').addEventListener('click',openTour);
     $('findButton').addEventListener('click',()=>openFind('','find'));
     $('closeSearch').addEventListener('click',()=>{$('searchDialog').close();state.searchRevision++;clearTimeout(state.searchTimer);});

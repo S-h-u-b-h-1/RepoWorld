@@ -297,3 +297,18 @@ test('issue markers distinguish fetched-source identifiers from issue path menti
   const before=renderer.edges.length;renderer.render(1100);
   assert.equal(renderer.edges.length,before);
 });
+
+test('architectural façades keep module towers prominent and bounds finite after orbit',()=>{
+  const {renderer}=world();renderer.setGraph({nodes:[
+    {id:'src/a',name:'A',kind:'api',fileCount:1},
+    {id:'src/b',name:'B',kind:'frontend',fileCount:140},
+    {id:'src/c',name:'C',kind:'docs',fileCount:7}
+  ],edges:[]});
+  assert.ok(renderer.nodes.every(n=>n.height>=6.2&&n.height<=15.4));
+  assert.ok(renderer.nodes.every(n=>n.width>=1.9&&n.width<=3.45));
+  renderer.render(2000);renderer.yaw=1.1;renderer.render(2040);
+  renderer.yaw=-2.4;renderer.render(2080);
+  assert.equal(renderer.hitAreas.length,3);
+  assert.ok(renderer.hitAreas.every(x=>Number.isFinite(x.roof.x)&&Number.isFinite(x.roof.y)));
+  assert.equal(renderer.edges.length,0);
+});
