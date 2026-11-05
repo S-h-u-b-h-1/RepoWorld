@@ -175,13 +175,17 @@ async def verify(browser,width,height):
     await page.locator("#issueFilterText").fill("")
     await page.locator("#issueList .issue-item .issue-title-button").click()
     await page.locator("#issueDrawer").wait_for(state="visible")
+    # Opening an issue already triggers the existing assistant guide. Wait for
+    # that request to settle, then ensure copying creates NO additional calls.
+    await page.wait_for_function("document.querySelector('#issueAiHeading')?.textContent?.includes('UNAVAILABLE')",timeout=5000)
+    calls_before=await page.evaluate("window.__CALLS__.length")
     await page.locator("#issueCopyNotes").click()
     await page.wait_for_function("typeof window.__COPIED_NOTES__==='string'",timeout=5000)
     notes=await page.evaluate("window.__COPIED_NOTES__")
     assert "Issue: https://github.com/pallets/flask/issues/25" in notes,notes[:350]
     assert "not a reproduced defect or verified fix" in notes,notes[:350]
     assert "No fetched source excerpts were confirmed" in notes,notes[-650:]
-    assert not any(route.endswith('/assistant') for route in await page.evaluate("window.__CALLS__"))
+    assert await page.evaluate("window.__CALLS__.length")==calls_before, "Copy action triggered unexpected network call"
     await page.screenshot(path=str(OUT/f"issue-copy-notes-{width}.png"),full_page=True)
     assert not errors,errors
     assert not await page.evaluate("document.documentElement.scrollWidth>innerWidth")
