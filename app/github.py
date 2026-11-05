@@ -222,7 +222,13 @@ async def get_repository_graph(raw: str, client: httpx.AsyncClient | None = None
     cache_key = (owner + "/" + repo).lower()
     cached = _GRAPH_CACHE.get(cache_key) if client is None and not refresh else None
     token = os.environ.get("GITHUB_TOKEN", "").strip()
-    headers = {"Accept": "application/vnd.github+json", "User-Agent": "RepoWorld/0.9.6",
+    if not token and os.getenv("REPOWORLD_EPHEMERAL_DEMO") == "1":
+        # Explicit free public preview: use the bounded source ZIP endpoint,
+        # not the shared-IP GitHub REST allowance. Token-backed imports keep
+        # the normal metadata/visibility checks and expanded source sampling.
+        from .archive_import import get_public_archive_graph
+        return await get_public_archive_graph(owner, repo, client=client)
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "RepoWorld/0.9.7",
                "X-GitHub-Api-Version": "2022-11-28"}
     if token:
         headers["Authorization"] = f"Bearer {token}"

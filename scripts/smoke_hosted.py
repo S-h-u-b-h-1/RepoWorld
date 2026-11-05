@@ -42,7 +42,7 @@ def run(origin: str, *, import_repo: str | None = None, allow_local: bool = Fals
     with httpx.Client(base_url=origin, transport=transport, timeout=30, follow_redirects=False) as client:
         health=client.get('/api/health')
         check(health.status_code==200 and health.json().get('ok') is True, 'Health endpoint')
-        check(health.json().get('version') == '0.9.6', 'Expected RepoWorld v0.9.6')
+        check(health.json().get('version') == '0.9.7', 'Expected RepoWorld v0.9.7')
         ready=client.get('/api/ready')
         check(ready.status_code==200 and ready.json().get('ready') is True, 'Deployment readiness')
         index=client.get('/')

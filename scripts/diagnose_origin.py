@@ -40,8 +40,8 @@ def main() -> int:
                 return 1
             version = response.json().get('version','unknown')
             print('Server version:', version)
-            if version != '0.9.6':
-                print('The running server is not v0.9.6. Stop the old server before testing this fix.')
+            if version != '0.9.7':
+                print('The running server is not v0.9.7. Stop the old server before testing this fix.')
                 return 1
             session = client.get('/api/session')
             if session.status_code != 200:

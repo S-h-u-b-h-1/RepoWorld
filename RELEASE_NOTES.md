@@ -1,3 +1,13 @@
+## v0.9.7 — Bounded archive import for public code cities
+
+- Free Render installations **without** `GITHUB_TOKEN` import smaller public GitHub repositories from the official source ZIP endpoint, without spending GitHub REST API quota on initial imports. This is the **primary** free-tier source import path, not a repeated retry after REST rate limiting.
+- Archive inputs are capped at 12 MB compressed / 65 MB expanded / 13,000 members; sampled code is read in memory without extraction or execution, with traversal/symlink and redirect checks.
+- Source-archive graphs are actual public source snapshots but do **not** claim a pinned commit, verified branch, GitHub stars, current issue status or runtime dependencies. Unverified details are explicitly disclosed.
+- GitHub Issue Radar and source-specific AI investigations still need REST access, preferably via a privately configured, least-privilege `GITHUB_TOKEN`.
+- No change to the 3D UI, anonymous workspaces, free Render plan or modeled AI behavior.
+- Regression coverage includes legitimate archive import, CSRF-protected saved city, malicious zip paths/symlinks, size/redirect caps, corrupt ZIPs, private/unavailable archives and preservation of REST visibility checks.
+- Tests: 161 Python and 40 Node tests pass locally in the corresponding release source. Live codeload connectivity from Render requires a separate hosted check.
+
 ## GitHub shared-IP rate-limit mitigation (free hosting hotfix)
 
 - A Render Free service can exhaust GitHub's public IP-based API limit even with a healthy website. This does not indicate an invalid repository.

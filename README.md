@@ -1,8 +1,8 @@
-# RepoWorld v0.9.6 — The City of Code
+# RepoWorld v0.9.7 — The City of Code
 
 **RepoWorld is a read-only, sign-in-free tool for exploring public GitHub repositories as interactive 3D cities.** Districts are groups of source files; buildings represent modules; illuminated links represent sampled **static imports**, not runtime traffic. Issue Radar displays GitHub's reported open issues as referenced, suggested, or unplaced locations. An optional BharatCode assistant helps developers investigate code and plan safe next steps.
 
-**Status:** v0.9.6 source is published at https://github.com/S-h-u-b-h-1/RepoWorld; its local and mocked-hosting checks passed. The application is **not yet verified as publicly deployed or submitted**. A zero-cost Render preview is configured below (without a paid disk). See [RELEASE_NOTES.md](RELEASE_NOTES.md) and [ROADMAP.md](ROADMAP.md).
+**Status:** v0.9.7 source is published at https://github.com/S-h-u-b-h-1/RepoWorld; its local and mocked-hosting checks passed. The application is **not yet verified as publicly deployed or submitted**. A zero-cost Render preview is configured below (without a paid disk). See [RELEASE_NOTES.md](RELEASE_NOTES.md) and [ROADMAP.md](ROADMAP.md).
 
 ## Try RepoWorld (no account)
 
@@ -144,11 +144,19 @@ python scripts/check_production.py
 
 The production configuration preflight intentionally returns a nonzero status on a local development environment. Focused Chromium checks require Playwright and an installed Chromium executable. The import-recovery regressions and OpenWISP #717 regression use **mocked GitHub API responses**, not a live provider completion.
 
+## v0.9.7: real public-repository cities without REST quota
+
+The **free Render demonstration** uses GitHub's public source ZIP distribution endpoint to import smaller repositories when no server-side `GITHUB_TOKEN` is configured. A single bounded archive download is processed **in memory only**; RepoWorld never executes repository files or extracts them to disk. The archive is capped at 12 MB compressed, 65 MB expanded, 13,000 entries and three sampled source files. Any larger or unavailable archive results in an honest error. This is a real GitHub source snapshot, **not** the fictional offline demo.
+
+This improves **initial repository imports**, which no longer consume the shared unauthenticated GitHub **REST** allowance on this free-hosting path. GitHub may independently throttle source archives; the app never blindly retries or bypasses such restrictions. The imported graph has `branch: HEAD` and explicitly discloses that the exact default branch name, commit SHA, stars, and GitHub issues were not verified. Import graphs do not prove runtime architecture.
+
+**Issue Radar and source-specific AI investigations still use GitHub REST** and may display a quota error until a server-side `GITHUB_TOKEN` with minimal read-only privileges is configured privately in Render. A token-backed import continues using GitHub REST, including live metadata and source sampling. The free service's ephemeral workspaces and quotas still disappear upon spin-down or redeploy. Public source archives are not suitable for giant repositories.
+
 ## GitHub API quota behavior on free hosting
 
 Render's shared outbound IP may already be near GitHub's unauthenticated 60-requests/hour allowance; waiting for a cooldown cannot guarantee the next visitor will have quota. A short-lived read-only GitHub personal access token can be set privately as `GITHUB_TOKEN` in the Render Environment settings to obtain the higher authenticated GitHub API budget. Never commit or display this token, and prefer minimum permissions and expiry.
 
-When no token exists, the explicit free demo configuration inspects at most **two** source blobs per import (plus GitHub metadata/tree), preserving the map while reducing API pressure. A real import may still return HTTP 429 when the shared public quota is depleted. In that case the import dialog offers **Explore a fictional demo city (offline)**: it loads an explicitly labeled fictional graph from RepoWorld itself, **not** a live GitHub repository, and does not contact GitHub or claim the issue data is real.
+Without a token, the free demo now imports a bounded public ZIP archive (up to three inspected source files, no REST metadata/tree calls). The archive endpoint can impose separate restrictions or reject oversized repositories. In that case the import dialog offers **Explore a fictional demo city (offline)**: it loads an explicitly labeled fictional graph from RepoWorld itself, **not** a live GitHub repository, and does not contact GitHub or claim the issue data is real.
 
 ## Free public hosting (ephemeral hackathon preview)
 
