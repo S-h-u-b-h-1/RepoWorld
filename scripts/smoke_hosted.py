@@ -33,7 +33,8 @@ def _origin(value: str, *, allow_local: bool = False) -> str:
 
 def run(origin: str, *, import_repo: str | None = None, allow_local: bool = False,
         transport: httpx.BaseTransport | None = None, require_ai: bool = False,
-        verify_live_ai: bool = False, require_source_evidence: bool = False) -> list[str]:
+        verify_live_ai: bool = False, require_source_evidence: bool = False,
+        allow_browser_issues_fallback: bool = False) -> list[str]:
     if (verify_live_ai or require_source_evidence) and not import_repo:
         raise ValueError('Live AI checks require --import-repo to identify a saved public city.')
     if require_source_evidence and not verify_live_ai:
@@ -94,7 +95,18 @@ def run(origin: str, *, import_repo: str | None = None, allow_local: bool = Fals
             item=response.json()
             check(bool(item.get('graph',{}).get('nodes')), 'Imported city has buildings')
             issues=client.get(f"/api/my-repos/{item['id']}/issues", timeout=45)
-            check(issues.status_code==200 and isinstance(issues.json().get('issues'),list), 'GitHub Issue Radar')
+            if issues.status_code==429 and allow_browser_issues_fallback:
+                try:
+                    error=str(issues.json().get('error') or issues.json().get('detail') or '').lower()
+                except (ValueError,AttributeError):
+                    error=''
+                # Never bypass RepoWorld's own budget/guest 429. This flag only
+                # continues past a clearly identified provider GitHub quota.
+                check('github' in error and 'rate limit' in error,
+                      'Only GitHub provider 429 may use browser-fallback smoke mode')
+                notes.append('WARN Server GitHub Issue Radar is provider-rate-limited. Browser fallback exists but was not browser-tested here.')
+            else:
+                check(issues.status_code==200 and isinstance(issues.json().get('issues'),list), 'GitHub Issue Radar')
             if verify_live_ai:
                 question=('Using only public repository evidence, identify a source module '
                           'to inspect first and say what remains unknown.')
@@ -132,11 +144,14 @@ def main():
     parser.add_argument('--require-ai',action='store_true',help='Fail if BharatCode is not configured (no model call)')
     parser.add_argument('--verify-live-ai',action='store_true',help='Spend one explicitly requested model call after import')
     parser.add_argument('--require-source-evidence',action='store_true',help='Require a fetched source excerpt in the model answer')
+    parser.add_argument('--allow-browser-issues-fallback',action='store_true',
+                        help='Continue past provider-specific GitHub issue 429; does NOT verify actual browser CORS')
     args=parser.parse_args()
     try:
         for note in run(args.url,import_repo=args.import_repo,allow_local=args.allow_local,
                         require_ai=args.require_ai,verify_live_ai=args.verify_live_ai,
-                        require_source_evidence=args.require_source_evidence):
+                        require_source_evidence=args.require_source_evidence,
+                        allow_browser_issues_fallback=args.allow_browser_issues_fallback):
             print(note)
         return 0
     except (ValueError, RuntimeError, httpx.RequestError, KeyError, TypeError) as exc:

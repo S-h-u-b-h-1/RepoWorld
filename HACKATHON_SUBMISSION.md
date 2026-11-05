@@ -40,9 +40,13 @@ python scripts/check_build_league.py
 python scripts/check_production.py
 python scripts/smoke_hosted.py https://repoworld-3b9e.onrender.com --require-ai
 # Only when the real model key is configured and provider usage is authorized:
-python scripts/smoke_hosted.py https://repoworld-3b9e.onrender.com --import-repo pallets/flask --verify-live-ai --require-source-evidence
+python scripts/smoke_hosted.py https://repoworld-3b9e.onrender.com --import-repo pallets/flask --verify-live-ai --require-source-evidence --allow-browser-issues-fallback
 ```
 
 The final command deliberately imports a real public repository and spends one model request. If GitHub source retrieval or model inference is unavailable, it should fail rather than claiming RAG is verified.
 
 **Required final action:** Submit the project through the signed-in official portal and confirm the entry appears under its registered account. Avoid claiming this was completed until there is evidence.
+
+## One-click remote smoke from GitHub Actions
+
+Open the repo's **Actions → RepoWorld Hosted Smoke → Run workflow**. Use `basic` for safe key-status and readiness checks (no imports or AI calls), `import` for one public repository and Issue Radar, `ai` for an actual Qwen response, or `evidence` to require fetched source citations. These last three modes consume the deployed guest's normal quotas. The job warms the Render Free backend first. In the `ai`/`evidence` modes, a provider-specific server GitHub 429 is explicitly labeled as unverified browser fallback, not counted as a successful server issue feed. A guest quota 429 still fails the test. Job logs contain pass/warn statuses only, not keys or model output. Manual trigger only; no automatic provider spending.
