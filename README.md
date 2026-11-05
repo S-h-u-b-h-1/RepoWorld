@@ -1,8 +1,8 @@
-# RepoWorld v0.9.9 — The City of Code
+# RepoWorld v0.9.10 — The City of Code
 
 **RepoWorld is a read-only, sign-in-free tool for exploring public GitHub repositories as interactive 3D cities.** Districts are groups of source files; buildings represent modules; illuminated links represent sampled **static imports**, not runtime traffic. Issue Radar displays GitHub's reported open issues as referenced, suggested, or unplaced locations. An optional BharatCode assistant helps developers investigate code and plan safe next steps.
 
-**Status:** Public source: https://github.com/S-h-u-b-h-1/RepoWorld. Free hosted site: https://repoworld-3b9e.onrender.com. The v0.9.8 Issue Radar fallback and v0.9.9 visual/navigation updates are CI-tested and in mocked browsers; the public host and real GitHub API behavior must be checked separately after each deployment. No hackathon submission is claimed.
+**Status:** Public source: https://github.com/S-h-u-b-h-1/RepoWorld. Free hosted site: https://repoworld-3b9e.onrender.com. The v0.9.8 Issue Radar fallback and v0.9.10 visual/navigation updates are CI-tested and in mocked browsers; the public host and real GitHub API behavior must be checked separately after each deployment. No hackathon submission is claimed.
 
 ## Fast free launch page (static CDN)
 
@@ -22,7 +22,7 @@ The temporary **Explore code → Map controls** panel has **Previous building** 
 
 Dense repositories use spacing derived from the **actual displayed building widths**, so source-module towers and floating district footprints do not overlap in map coordinates. A bounded square-spiral wraps crowded central code districts around the non-source landmark. Overview and district focus cameras fit the calculated bounds; decorative scenery avoids real buildings. Small-scale façades skip sub-pixel windows and idle/mobile rendering is frame-rate limited. These optimizations do **not** add code links, infer new source evidence, or imply exact runtime topology.
 
-## City readability and navigation (v0.9.9)
+## City readability and navigation (v0.9.10)
 
 The original near-black, floating-district perspective remains. Decorative blocks are quieter, real source-module buildings have raised roofs and camera-aware lit façades, and the symbolic central beacon is slightly less dominant. Labels, issue text, menus, tooltips and inspector copy are larger. Open **Explore code → Map controls** for a district jump, a most-connected-module focus (only sampled static links count), and accessible +/− zoom buttons. Existing wheel/pinch zoom, Shift-drag pan and double-click reset remain. This upgrade does not change source evidence or classify decorative buildings as code.
 
