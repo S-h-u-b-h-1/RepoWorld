@@ -3,7 +3,7 @@
 - Fast first-visit launch page: https://repoworld-launch.onrender.com, published on Render Free Static Site.
 - Existing interactive app remains at https://repoworld-3b9e.onrender.com; no changes to backend hosting costs or security policies.
 - Static launcher shows an illustrative fixture immediately, probes the backend's actual SVG favicon, then redirects only after the image loads; it has a direct-open link and bounded retries.
-- Valid public `?repo=owner/repo` share parameters survive the transition. Invalid links are discarded, and no cookies, secrets, or private source data are shared by the launcher.
+- Valid public `?repo=owner/repo` share parameters survive the transition. Invalid links are discarded, and the launcher never reads or stores cookies, secrets, or private source data. Browsers may attach existing backend cookies to its readiness image request.
 - Five Node tests and desktop/mobile screenshot checks; CI now includes launch tests. This is a cold-start UX mitigation, **not** an elimination of Render Free sleep.
 
 ## v0.9.8 — Read-only browser Issue Radar fallback

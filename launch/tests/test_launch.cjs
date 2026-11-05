@@ -59,6 +59,7 @@ test('launch page is self-contained and has direct access even without JavaScrip
 test('probes only the static favicon and redirects after a real image load',()=>{
   const page=launch('?repo=pallets%2Fflask');
   assert.equal(page.images.length,1);
+  assert.equal(page.images[0].referrerPolicy,'no-referrer');
   assert.ok(page.images[0].src.startsWith(BACKEND+'/static/favicon.svg?launcher='));
   assert.ok(page.el.get('openDirect').href.includes('repo=pallets%2Fflask'));
   assert.equal(page.redirects.length,0);

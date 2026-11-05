@@ -60,11 +60,13 @@
     if(tries===1)setStatus('Connecting to the live city…','Starting the free application. We will open it when the server responds.','waiting');
     const image=new Image();
     activeProbe=image;
+    image.referrerPolicy='no-referrer';
     pendingTimeout=window.setTimeout(failed,PROBE_TIMEOUT_MS);
     image.onload=finished;
     image.onerror=failed;
-    // Valid SVG image loading is a real availability signal, without CORS,
-    // cookies, secrets, API quota or an extra health endpoint.
+    // Valid SVG image loading is a real availability signal without needing
+    // cross-origin response access, secret reads, or a GitHub API request.
+    // Browsers may attach existing backend cookies; we do not read them.
     image.src=BACKEND_ORIGIN+'/static/favicon.svg?launcher='+Date.now()+'-'+tries;
   }
   retry.addEventListener('click',()=>{cancelProbe();tries=0;probe();});
