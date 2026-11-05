@@ -523,3 +523,23 @@ test('temporary map controls focus districts, connected hubs and zoom, without n
   assert.equal(ui.el('inspector').hidden,false);
   assert.equal(ui.el('mapTools').hidden,true);
 });
+
+test('Issue Radar local search and categories filter only sampled records without extra GitHub fetches',async()=>{
+  const ui=makeApp({active:true});await ui.boot();
+  ui.el('mapCommandTrigger').listeners.click();ui.compassTabs[1].listeners.click();
+  assert.equal(ui.el('issueList').children.length,2);
+  const count=ui.calls.length;
+  ui.el('issueFilterText').value='login';ui.el('issueFilterText').listeners.input();
+  assert.equal(ui.el('issueList').children.length,1);
+  assert.match(ui.el('issueSummary').textContent,/1 of 2 sampled issues match/);
+  ui.el('issueFilterText').value='';ui.el('issueFilterText').listeners.input();
+  ui.el('issueFilterType').value='bug';ui.el('issueFilterType').listeners.change();
+  assert.equal(ui.el('issueList').children.length,1);
+  ui.el('issueFilterType').value='mapped';ui.el('issueFilterType').listeners.change();
+  assert.equal(ui.el('issueList').children.length,1);
+  ui.el('issueFilterType').value='good-first';ui.el('issueFilterType').listeners.change();
+  assert.match(ui.el('issueList').children[0].textContent,/No sampled issues match/);
+  ui.el('issueFilterType').value='all';ui.el('issueFilterType').listeners.change();
+  assert.equal(ui.el('issueList').children.length,2);
+  assert.equal(ui.calls.length,count);
+});

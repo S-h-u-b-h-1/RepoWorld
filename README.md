@@ -14,6 +14,10 @@ The launcher preserves only validated public `?repo=owner%2Frepo` parameters. It
 
 The original near-black, floating-district perspective remains. Decorative blocks are quieter, real source-module buildings have raised roofs and camera-aware lit façades, and the symbolic central beacon is slightly less dominant. Labels, issue text, menus, tooltips and inspector copy are larger. Open **Explore code → Map views · More** for a district jump, a most-connected-module focus (only sampled static links count), and accessible +/− zoom buttons. Existing wheel/pinch zoom, Shift-drag pan and double-click reset remain. This upgrade does not change source evidence or classify decorative buildings as code.
 
+### Issue Radar quick filters
+
+Within **Explore code → Open issues**, search the fetched issue sample by title, issue number or labels, or filter by bug, good-first-issue, enhancement, or location-hint categories. Filtering happens entirely in the browser with no extra GitHub requests. It does not search every issue in the repository, promote unverified paths to source observations, or change the map markers.
+
 ## Try RepoWorld (no account)
 
 1. Open RepoWorld. A new browser sees **Add GitHub repository**; a returning browser with saved cities sees its last city.

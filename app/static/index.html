@@ -192,6 +192,7 @@
         <div class="issues-title"><div><h2>Open issues, placed in context.</h2><p>Find a place to contribute. Only GitHub's open issues are shown.</p></div>
           <button type="button" id="refreshIssues" title="Refresh open issues" aria-label="Refresh open issues">↻</button></div>
         <div class="issue-summary" id="issueSummary">Checking GitHub issues…</div>
+        <div class="issue-filters"><input id="issueFilterText" type="search" maxlength="100" autocomplete="off" aria-label="Search sampled GitHub issues" placeholder="Search titles, labels or issue number…"><select id="issueFilterType" aria-label="Filter sampled GitHub issues"><option value="all">All issues</option><option value="bug">Bugs</option><option value="good-first">Good first issues</option><option value="enhancement">Features &amp; enhancements</option><option value="mapped">Has city location hint</option></select></div>
         <div id="issueList" class="issue-list" role="status" aria-live="polite"></div>
         <p class="issue-disclaimer" id="issueDisclaimer">Placement is based on explicit file references or clearly labeled suggestions; unplaced issues stay unplaced.</p>
       </div>
