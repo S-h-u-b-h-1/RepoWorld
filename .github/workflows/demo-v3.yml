@@ -1,0 +1,91 @@
+name: RepoWorld live motion demo capture + conversational narration
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/record_live_demo_v3.py"
+      - "scripts/narrate_demo_v3.py"
+      - ".github/workflows/demo-v3.yml"
+permissions:
+  contents: read
+jobs:
+  live-footage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install recording dependencies
+        run: |
+          python -m pip install playwright httpx
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg xvfb
+      - name: Record real site with no browser toolbar and no AI request
+        run: |
+          google-chrome --version
+          xvfb-run -a --server-args="-screen 0 1920x1170x24 -ac" \
+            python scripts/record_live_demo_v3.py
+      - name: Validate video stream
+        if: success()
+        run: |
+          ffprobe -v error -show_entries stream=codec_name,width,height,r_frame_rate \
+            -show_entries format=duration,size -of json \
+            evidence/demo-live/RepoWorld_Live_RealScreen_30fps.mp4
+      - name: Upload live walkthrough
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repoworld-v3-real-live-walkthrough
+          path: evidence/demo-live/
+          if-no-files-found: warn
+          retention-days: 7
+  conversational-narration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    env:
+      OMP_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free Kokoro runtime
+        run: |
+          python -m pip install "kokoro-onnx>=0.6,<0.7" soundfile numpy
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends espeak-ng
+      - name: Download model weights into ephemeral runner storage
+        run: |
+          mkdir -p "$RUNNER_TEMP/demo-model"
+          curl -fL --retry 3 -o "$RUNNER_TEMP/demo-model/kokoro-v1.0.onnx" \
+            https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/kokoro-v1.0.onnx
+          curl -fL --retry 3 -o "$RUNNER_TEMP/demo-model/voices-v1.0.bin" \
+            https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/voices-v1.0.bin
+      - name: Generate warm British-English voice at natural pace
+        run: |
+          python scripts/narrate_demo_v3.py \
+            --model "$RUNNER_TEMP/demo-model/kokoro-v1.0.onnx" \
+            --voices "$RUNNER_TEMP/demo-model/voices-v1.0.bin"
+      - name: Validate voice data
+        run: |
+          python - <<'PY'
+          import json, soundfile as sf, numpy as np
+          path="evidence/demo-voice/"
+          audio,rate=sf.read(path+"RepoWorld_Conversational_British_Narration.wav")
+          cues=json.load(open(path+"voice-timeline.json"))
+          assert rate==24000 and audio.ndim==1 and 65<len(audio)/rate<160
+          assert np.isfinite(audio).all() and .02<np.max(np.abs(audio))<1
+          assert len(cues["cues"])==12
+          print("PASS valid natural narration WAV",round(len(audio)/rate,2),"s")
+          PY
+      - name: Upload voice and timed phrases
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repoworld-v3-conversational-british-voice
+          path: evidence/demo-voice/
+          if-no-files-found: warn
+          retention-days: 7
