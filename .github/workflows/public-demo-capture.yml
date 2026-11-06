@@ -17,6 +17,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install playwright httpx
+      - name: Install Playwright recorder encoder
+        run: python -m playwright install ffmpeg
       - name: Verify real Chrome available
         run: google-chrome --version
       - name: Record public production app, without any AI call
