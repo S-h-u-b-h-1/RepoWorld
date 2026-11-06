@@ -46,10 +46,16 @@ jobs:
             --output evidence/demo-narration
       - name: Validate playable audio
         run: |
-          ffprobe -v error -show_entries format=duration,size \
-            -show_entries stream=codec_name,sample_rate,channels \
-            -of default=noprint_wrappers=1 \
-            evidence/demo-narration/RepoWorld_Natural_Voiceover.wav
+          python - <<'PY'
+          import soundfile as sf
+          import numpy as np
+          path = "evidence/demo-narration/RepoWorld_Natural_Voiceover.wav"
+          audio, sample_rate = sf.read(path)
+          assert audio.ndim == 1 and sample_rate == 24000
+          assert 55 <= len(audio) / sample_rate <= 175
+          assert np.isfinite(audio).all() and 0.02 < np.max(np.abs(audio)) <= 1
+          print(f"PASS narration WAV duration={len(audio)/sample_rate:.2f}s")
+          PY
       - name: Upload narration WAV, per-scene tracks and exact timing
         if: always()
         uses: actions/upload-artifact@v4
