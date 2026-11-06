@@ -1,180 +1,136 @@
-"""Record real RepoWorld production footage for the hackathon demo.
+"""Capture high-resolution, authentic RepoWorld frames for editorial demo.
 
-One public import, no private repositories, no AI/provider calls, no secrets logged.
-All footage uses the live deployed website; synthetic scenes are forbidden.
+The recording is a visual proof-of-product, not an AI-generated simulation.
+Uses one confirmed public repository import and no BharatCode generation.
 """
+from __future__ import annotations
+
 import asyncio
 import json
-import time
 from pathlib import Path
+import time
 
 import httpx
 from playwright.async_api import async_playwright
 
 SITE = "https://repoworld-3b9e.onrender.com"
-REPO = "zulip/zulip-terminal"
-ROOT = Path("evidence/public-demo")
-ROOT.mkdir(parents=True, exist_ok=True)
-MARKERS = []
-START = None
+REPOSITORY = "zulip/zulip-terminal"
+OUT = Path("evidence/public-demo")
+OUT.mkdir(parents=True, exist_ok=True)
+SHOTS = []
 
-def mark(name, detail=""):
-    elapsed = round(time.monotonic() - START, 2) if START is not None else 0
-    MARKERS.append({"name": name, "seconds": elapsed, "detail": detail})
-    print(f"SHOT {name} at {elapsed:.2f}s {detail}", flush=True)
 
-async def pause(seconds):
-    await asyncio.sleep(seconds)
-
-async def screenshot(page, slug):
-    await page.screenshot(path=str(ROOT / (slug + ".png")), animations="disabled")
-
-async def warm_backend():
-    print("Checking public deployment readiness; no GitHub import yet", flush=True)
-    timeout = httpx.Timeout(38, connect=12)
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
-        for _ in range(5):
+async def check_ready() -> None:
+    async with httpx.AsyncClient(timeout=httpx.Timeout(35, connect=10)) as client:
+        for attempt in range(5):
             try:
-                r = await client.get(SITE + "/api/ready")
-                if r.status_code == 200 and r.json().get("ready") is True:
-                    print("PASS backend ready", flush=True)
+                response = await client.get(SITE + "/api/ready")
+                if response.status_code == 200 and response.json().get("ready") is True:
+                    print("PASS real deployment ready", flush=True)
                     return
             except (httpx.RequestError, ValueError):
                 pass
             await asyncio.sleep(5)
-    raise RuntimeError("Public backend unavailable: no synthetic substitute will be recorded")
+    raise RuntimeError("Production website unavailable; cannot substitute synthetic footage")
 
-async def prep_city(browser):
-    context = await browser.new_context(viewport={"width":1920,"height":1080}, device_scale_factor=1,
-                                        reduced_motion="reduce")
-    page = await context.new_page()
-    await page.goto(SITE, wait_until="domcontentloaded", timeout=75000)
-    await page.locator("#workspace").wait_for(state="visible", timeout=60000)
-    await page.locator("#emptyState").wait_for(state="visible", timeout=25000)
-    await page.locator("#emptyAddRepo").click()
-    await page.locator("#importInput").fill(REPO)
-    await page.locator("#importButton").click()
-    await page.locator("#canvasStage").wait_for(state="visible", timeout=110000)
-    await page.locator("#mapCommandTrigger").wait_for(state="visible", timeout=12000)
-    await pause(2)
-    await context.storage_state(path=str(ROOT/"guest-state.json"))
-    await page.close()
-    await context.close()
-    print("PASS real public city imported; saved guest-only cookies in ephemeral runner", flush=True)
 
-async def click(page, selector, **kwargs):
+async def optional_click(page, selector: str):
     try:
-        await page.locator(selector).first.click(timeout=7000, **kwargs)
+        await page.locator(selector).first.click(timeout=10000)
         return True
     except Exception as exc:
-        print("Optional scene could not click",selector,type(exc).__name__,flush=True)
+        print("Optional action unavailable:", selector, type(exc).__name__, flush=True)
         return False
 
-async def capture(browser):
-    global START
-    context=await browser.new_context(
-        viewport={"width":1920,"height":1080},device_scale_factor=1,
-        record_video_dir=str(ROOT),record_video_size={"width":1920,"height":1080},
-        storage_state=str(ROOT/"guest-state.json"),reduced_motion="reduce",
-        color_scheme="dark")
-    page=await context.new_page()
-    await page.goto(SITE,wait_until="domcontentloaded",timeout=75000)
-    await page.locator("#canvasStage").wait_for(state="visible",timeout=75000)
-    await page.locator("#mapCommandTrigger").wait_for(state="visible",timeout=12000)
-    await pause(1.5)
-    START=time.monotonic()
-    video=page.video
 
-    # Sequence is intentionally calm, paced for a 95-105 second human voiceover.
-    mark("city_overview","real public repository")
-    await screenshot(page,"01-city")
-    await page.mouse.move(1840,960)
-    await pause(7)
+async def photo(page, slug: str, caption: str):
+    # deviceScaleFactor=2 gives 3200x1800 source pixels for a 1600x900 CSS viewport.
+    filename = f"{len(SHOTS)+1:02d}-{slug}.png"
+    await page.screenshot(path=str(OUT / filename), animations="disabled")
+    SHOTS.append({"file": filename, "scene": slug, "caption": caption})
+    print(f"FRAME {filename}: {caption}", flush=True)
 
-    mark("city_orbit","slow, stable mouse gesture")
-    canvas=page.locator("#worldCanvas")
-    box=await canvas.bounding_box()
-    if box:
-        x=box["x"]+box["width"]*0.49
-        y=box["y"]+box["height"]*0.53
-        await page.mouse.move(x,y)
-        await page.mouse.down()
-        for t in range(28):
-            await page.mouse.move(x+95*(t+1)/28,y+16*(t+1)/28)
-            await asyncio.sleep(.035)
-        await page.mouse.up()
-    await page.mouse.move(1840,960)
-    await pause(6)
-
-    mark("city_controls","code districts and navigation")
-    if await click(page,"#mapCommandTrigger"):
-        await click(page,"#showMapOptions")
-    await screenshot(page,"02-city-controls")
-    await pause(5)
-
-    mark("real_building","inspector, sampled imports and real paths")
-    if await click(page,"#nextBuilding"):
-        await page.locator("#inspector").wait_for(state="visible",timeout=8000)
-    await screenshot(page,"03-real-building")
-    await pause(9)
-    await click(page,"#closeInspector")
-    await pause(1.5)
-
-    mark("find_code","actual repository path search")
-    await click(page,"#mapCommandTrigger")
-    await click(page,'[data-compass-tab="find"]')
-    await page.locator("#searchInput").fill("model")
-    await pause(2.2)
-    await screenshot(page,"04-find-code")
-    await pause(6)
-    if await page.locator("#searchResults .search-result").count():
-        await click(page,"#searchResults .search-result")
-    await pause(3)
-    await click(page,"#closeInspector")
-
-    mark("issue_radar","live GitHub issue list")
-    await click(page,"#mapCommandTrigger")
-    await click(page,'[data-compass-tab="issues"]')
-    await pause(1.5)
-    await screenshot(page,"05-open-issues")
-    await pause(8)
-
-    mark("issue_investigation","reported issue; no bug reproduction claimed")
-    if await page.locator("#issueList .issue-item .issue-title-button").count():
-        await click(page,"#issueList .issue-item .issue-title-button")
-        await pause(2.5)
-        await screenshot(page,"06-issue-investigation")
-        await pause(6)
-        await click(page,"#closeIssueDrawer")
-    else:
-        print("WARN no issue items visible; will not invent one",flush=True)
-        await pause(7)
-
-    mark("assistant_console","no unverified AI generation portrayed")
-    await click(page,"#mapCommandTrigger")
-    await click(page,'[data-compass-tab="ask"]')
-    await screenshot(page,"07-developer-assistant")
-    await pause(8)
-
-    mark("return_to_city","final live app shot")
-    await click(page,"#closeSearch")
-    await screenshot(page,"08-closing-city")
-    await pause(8)
-    await page.close()
-    await video.save_as(str(ROOT/"real-product-footage.webm"))
-    await context.close()
-    (ROOT/"shot-markers.json").write_text(json.dumps(MARKERS,indent=2))
-    print("PASS captured authentic deployment footage",flush=True)
 
 async def main():
-    await warm_backend()
-    async with async_playwright() as p:
-        browser=await p.chromium.launch(channel="chrome",headless=True,args=["--no-sandbox"])
-        await prep_city(browser)
-        try:
-            await capture(browser)
-        finally:
-            await browser.close()
+    await check_ready()
+    async with async_playwright() as playwright:
+        browser = await playwright.chromium.launch(
+            channel="chrome", headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"])
+        context = await browser.new_context(
+            viewport={"width": 1600, "height": 900},
+            device_scale_factor=2,
+            reduced_motion="reduce",
+            color_scheme="dark",
+        )
+        page = await context.new_page()
+        await page.goto(SITE, wait_until="domcontentloaded", timeout=90000)
+        await page.locator("#workspace").wait_for(state="visible", timeout=80000)
+        if await page.locator("#emptyState").is_visible():
+            await optional_click(page, "#emptyAddRepo")
+            await page.locator("#importInput").fill(REPOSITORY)
+            await optional_click(page, "#importButton")
+        await page.locator("#canvasStage").wait_for(state="visible", timeout=110000)
+        await page.locator("#mapCommandTrigger").wait_for(state="visible", timeout=14000)
+        await asyncio.sleep(2)
 
-if __name__=="__main__":
+        # Only genuine content observed in the current public workspace.
+        await photo(page, "city-overview", "Actual imported public GitHub city")
+        box = await page.locator("#worldCanvas").bounding_box()
+        if box:
+            await page.mouse.move(box["x"] + box["width"]*.48, box["y"] + box["height"]*.53)
+            await page.mouse.wheel(0, -400)
+            await asyncio.sleep(1.3)
+        await photo(page, "city-focused", "Larger steady 3D city view")
+
+        await optional_click(page, "#mapCommandTrigger")
+        await optional_click(page, "#showMapOptions")
+        await photo(page, "map-controls", "Observed city navigation and layer tools")
+
+        await optional_click(page, "#nextBuilding")
+        await asyncio.sleep(.45)
+        if await page.locator("#inspector").is_visible():
+            await photo(page, "module-inspector", "Real indexed building and source paths")
+            await page.locator("#inspector").evaluate("el => el.scrollTop = Math.min(el.scrollHeight/2, 400)")
+            await asyncio.sleep(.2)
+            await photo(page, "module-evidence", "Sampled files and static imports")
+            await optional_click(page, "#closeInspector")
+
+        await optional_click(page, "#mapCommandTrigger")
+        await optional_click(page, '[data-compass-tab="find"]')
+        await page.locator("#searchInput").fill("model")
+        await asyncio.sleep(1)
+        await photo(page, "find-code", "Real code search for matching path names")
+
+        await optional_click(page, '[data-compass-tab="issues"]')
+        await asyncio.sleep(1.5)
+        await photo(page, "issue-radar", "Live issue feed with source-qualified locations")
+        if await page.locator("#issueList .issue-item .issue-title-button").count():
+            await optional_click(page, "#issueList .issue-item .issue-title-button")
+            await asyncio.sleep(1.1)
+            await photo(page, "issue-investigation", "Real public issue and investigation view")
+            await optional_click(page, "#closeIssueDrawer")
+
+        await optional_click(page, "#mapCommandTrigger")
+        await optional_click(page, '[data-compass-tab="ask"]')
+        await photo(page, "developer-assistant", "Source-scoped assistant interface; no inference claimed")
+        await optional_click(page, "#closeSearch")
+        await photo(page, "closing-city", "Public city after console is closed")
+
+        # Double-check we have actual 2x screenshots, not a reduced-size browser recording.
+        from PIL import Image
+        for shot in SHOTS:
+            with Image.open(OUT / shot["file"]) as image:
+                if image.size != (3200, 1800):
+                    raise RuntimeError(f"Capture unexpectedly changed size: {image.size}")
+        (OUT / "shot-index.json").write_text(json.dumps({
+            "source": SITE, "repository": REPOSITORY, "synthetic": False,
+            "resolution": [3200, 1800], "shots": SHOTS,
+            "note": "Images are of the real public product. No AI response was fabricated."
+        }, indent=2), encoding="utf-8")
+        print("PASS high-density production screenshots:", len(SHOTS), flush=True)
+        await context.close()
+        await browser.close()
+
+
+if __name__ == "__main__":
     asyncio.run(main())
