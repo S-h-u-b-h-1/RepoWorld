@@ -117,11 +117,13 @@ async def main():
         await photo(page, "closing-city", "Public city after console is closed")
 
         # Double-check we have actual 2x screenshots, not a reduced-size browser recording.
-        from PIL import Image
+        import struct
         for shot in SHOTS:
-            with Image.open(OUT / shot["file"]) as image:
-                if image.size != (3200, 1800):
-                    raise RuntimeError(f"Capture unexpectedly changed size: {image.size}")
+            with (OUT / shot["file"]).open("rb") as image_file:
+                header = image_file.read(24)
+            width, height = struct.unpack(">II", header[16:24])
+            if (width, height) != (3200, 1800):
+                raise RuntimeError(f"Capture unexpectedly changed size: {width}x{height}")
         (OUT / "shot-index.json").write_text(json.dumps({
             "source": SITE, "repository": REPOSITORY, "synthetic": False,
             "resolution": [3200, 1800], "shots": SHOTS,
