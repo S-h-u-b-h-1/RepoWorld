@@ -65,6 +65,12 @@ async def main():
         page = await context.new_page()
         await page.goto(SITE, wait_until="domcontentloaded", timeout=90000)
         await page.locator("#workspace").wait_for(state="visible", timeout=80000)
+        # Boot is asynchronous: wait for the empty/city state before deciding to import.
+        await page.wait_for_function("""() => {
+            const empty=document.querySelector('#emptyState');
+            const city=document.querySelector('#canvasStage');
+            return (empty && !empty.hidden) || (city && !city.hidden);
+        }""", timeout=30000)
         if await page.locator("#emptyState").is_visible():
             await optional_click(page, "#emptyAddRepo")
             await page.locator("#importInput").fill(REPOSITORY)
