@@ -94,9 +94,9 @@ async def main():
         output=OUT/"RepoWorld_Live_RealScreen_30fps.mp4"
         log=open(OUT/"capture-encoder.log","w")
         cmd=["ffmpeg","-hide_banner","-nostats","-loglevel","warning","-y",
-             "-thread_queue_size","512","-f","x11grab","-draw_mouse","0",
+             "-thread_queue_size","512","-f","x11grab","-draw_mouse","1",
              "-framerate","30","-video_size","1920x1080","-i",source,
-             "-an","-c:v","libx264","-preset","ultrafast","-crf","17",
+             "-an","-c:v","libx264","-preset","ultrafast","-crf","14",
              "-pix_fmt","yuv420p","-movflags","+faststart",str(output)]
         process=subprocess.Popen(cmd,stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=log)
         await asyncio.sleep(1)
@@ -110,22 +110,28 @@ async def main():
                 x=canvas["x"]+canvas["width"]*.52;y=canvas["y"]+canvas["height"]*.54
                 await page.mouse.move(x,y)
                 await page.mouse.down()
-                for frame in range(28):
-                    t=(frame+1)/28;ease=t*t*(3-2*t)
-                    await page.mouse.move(x+65*ease,y+13*ease)
-                    await asyncio.sleep(.038)
+                for frame in range(115):
+                    t=(frame+1)/115;ease=t*t*(3-2*t)
+                    await page.mouse.move(x+92*ease,y+18*ease)
+                    await asyncio.sleep(.025)
                 await page.mouse.up()
             await page.mouse.move(1860,1030)
 
         async def zoom():
             await page.mouse.move(1860,1030)
-            await page.mouse.wheel(0,-120)
-            await asyncio.sleep(.75)
-            await page.mouse.wheel(0,-120)
+            for delta in (-65,-65,-65,-65):
+                await page.mouse.wheel(0,delta)
+                await asyncio.sleep(.58)
 
         async def city_links():
             await tap(page,"#mapCommandTrigger",required=True)
             await tap(page,"#showMapOptions",required=True)
+            await tap(page,'[data-layer="dependencies"]')
+            await asyncio.sleep(1.65)
+            await tap(page,'[data-layer="flows"]')
+            await asyncio.sleep(1.45)
+            await tap(page,'[data-layer="hotspots"]')
+            await asyncio.sleep(1.1)
             await tap(page,'[data-layer="dependencies"]')
             await take(page,"connections")
 
@@ -138,13 +144,19 @@ async def main():
                 await tap(page,"#showMapOptions")
                 await tap(page,"#nextBuilding",required=True)
             await page.locator("#inspector").wait_for(state="visible",timeout=8000)
+            await asyncio.sleep(.55)
+            await tap(page,"#nextBuilding")
+            await asyncio.sleep(.65)
+            await tap(page,"#previousBuilding")
             await take(page,"inspector")
             await page.mouse.move(1860,1030)
 
         async def evidence():
             if await page.locator("#inspector").is_visible():
-                await page.locator("#inspector").evaluate("el=>el.scrollTo({top:Math.min(360,el.scrollHeight/2),behavior:'smooth'})")
-                await asyncio.sleep(.75)
+                for step in range(12):
+                    await page.locator("#inspector").evaluate("el=>el.scrollBy(0,24)")
+                    await asyncio.sleep(.085)
+                await asyncio.sleep(.4)
             await take(page,"source")
 
         async def find_code():
@@ -156,15 +168,22 @@ async def main():
                 await tap(page,'[data-compass-tab="find"]',required=True)
             await tap(page,'[data-compass-tab="find"]',required=True)
             await page.locator("#searchInput").fill("")
-            await page.locator("#searchInput").press_sequentially("model",delay=90)
-            await asyncio.sleep(1.5)
+            await page.locator("#searchInput").press_sequentially("model",delay=165)
+            await asyncio.sleep(1.4)
+            await page.locator("#searchResults .search-result").first.hover(timeout=4000)
             await take(page,"find-code")
 
         async def issue_radar():
             if not await page.locator("#searchDialog").is_visible():
                 await tap(page,"#mapCommandTrigger",required=True)
             await tap(page,'[data-compass-tab="issues"]',required=True)
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(.75)
+            await page.locator("#issueFilterText").press_sequentially("bug",delay=140)
+            await asyncio.sleep(.8)
+            await page.locator("#issueFilterText").fill("")
+            await asyncio.sleep(.7)
+            await page.locator("#issueList").evaluate("el=>el.scrollTo({top:Math.min(el.scrollHeight*.25,230),behavior:'smooth'})")
+            await asyncio.sleep(.9)
             await take(page,"issues")
 
         async def inspect_issue():
@@ -175,6 +194,9 @@ async def main():
                 await asyncio.sleep(.75)
                 if await page.locator("#issueOriginalReport").count():
                     await tap(page,"#issueOriginalReport summary")
+                await asyncio.sleep(.65)
+                await page.locator("#issueDrawer").evaluate("el=>el.scrollBy({top:170,behavior:'smooth'})")
+                await asyncio.sleep(.65)
                 await take(page,"issue-details")
             else:
                 print("WARN no live issue items available; hold real issue UI without fabricating content",flush=True)
@@ -183,7 +205,8 @@ async def main():
             await tap(page,"#closeIssueDrawer")
             await tap(page,"#mapCommandTrigger",required=True)
             await tap(page,'[data-compass-tab="ask"]',required=True)
-            await page.locator("#assistantQuestion").fill("Where should I start exploring this repository?")
+            await page.locator("#assistantQuestion").fill("")
+            await page.locator("#assistantQuestion").press_sequentially("Where should I start exploring this repository?",delay=48)
             await take(page,"assistant")
             # We DO NOT click Send, because the live BharatCode inference gate has not passed.
 
@@ -197,6 +220,8 @@ async def main():
             await tap(page,"#mapCommandTrigger")
             await tap(page,"#showMapOptions")
             await tap(page,"#resetCamera")
+            await asyncio.sleep(.45)
+            await orbit()
             await take(page,"closing")
 
         try:
