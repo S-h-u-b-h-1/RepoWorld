@@ -1,8 +1,18 @@
 # RepoWorld v0.9.15 — The City of Code
 
+### 🏆 BharatCode Build League 2026 — submitted entry
+
+**[🚀 Try RepoWorld](https://repoworld-launch.onrender.com)** · **[🗳️ Find RepoWorld and vote on BharatCode](https://bharatcode.ai/hackathon#projects)** · **[⭐ Star the open-source repository](https://github.com/S-h-u-b-h-1/RepoWorld)**
+
+Turn an unfamiliar public GitHub repository into an explorable **3D code city**. Inspect real module paths and sampled static imports, use **Find Code**, and investigate **open GitHub issues** with clearly qualified source-location hints. An optional **BharatCode-powered assistant** provides source-scoped guidance when inference is available; any fallback is explicitly labeled.
+
+**Try it in three steps:** open the live launcher, import the public repository `zulip/zulip-terminal`, then explore buildings, Find Code, and Issue Radar. No sign-in required. The free backend may take time to wake after inactivity.
+
+**If it helps you understand a codebase,** genuine GitHub stars and BharatCode community votes support the entry. Find **RepoWorld** under the event's Projects section; voting is limited to one registered BharatCode account. Feedback and bug reports are welcome.
+
 **RepoWorld is a read-only, sign-in-free tool for exploring public GitHub repositories as interactive 3D cities.** Districts are groups of source files; buildings represent modules; illuminated links represent sampled **static imports**, not runtime traffic. Issue Radar displays GitHub's reported open issues as referenced, suggested, or unplaced locations. An optional BharatCode assistant helps developers investigate code and plan safe next steps.
 
-**Status:** Public source: https://github.com/S-h-u-b-h-1/RepoWorld. Free hosted site: https://repoworld-3b9e.onrender.com. The v0.9.8 Issue Radar fallback and v0.9.10 visual/navigation updates are CI-tested and in mocked browsers; the public host and real GitHub API behavior must be checked separately after each deployment. No hackathon submission is claimed.
+**Status:** Public source: https://github.com/S-h-u-b-h-1/RepoWorld. Free hosted site: https://repoworld-3b9e.onrender.com. RepoWorld is publicly listed in the BharatCode Build League 2026 Projects section. The visual/navigation improvements have CI and mocked-browser tests; actual public-host and GitHub API behavior must still be verified after deployment. The optional BharatCode provider can time out and its labeled fallback is not a completed AI generation.
 
 ## Fast free launch page (static CDN)
 
