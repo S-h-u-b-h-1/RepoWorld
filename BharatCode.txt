@@ -1,5 +1,38 @@
 RepoWorld — The City of Code
-Hackathon category: Coding & Developer Tools
+BharatCode Build League 2026 | Category: Coding & Developer Tools
+Creator: Shubhaang Kataruka
+
+PROJECT IN ONE SENTENCE
+Explore unfamiliar public GitHub repositories as interactive 3D code cities,
+find relevant modules, and investigate open-source issues with source-aware,
+optional BharatCode-powered assistance.
+
+TRY THE WORKING PROJECT
+Source code: https://github.com/S-h-u-b-h-1/RepoWorld
+Free startup-friendly launcher: https://repoworld-launch.onrender.com
+Live application: https://repoworld-3b9e.onrender.com
+Example public repository: https://github.com/zulip/zulip-terminal
+
+Open the launcher, follow the link to RepoWorld, and confirm an import of
+"zulip/zulip-terminal". Explore its 3D districts and module buildings. Click a
+building to inspect indexed source paths and sampled static-import links; use
+Explore code > Find code to search; use Open issues (Issue Radar) to inspect
+reported GitHub issues and their qualified location hints. The assistant is
+optional, and its live inference depends on BharatCode provider availability.
+
+WHAT BHARATCODE POWERS
+RepoWorld integrates the BharatCode Qwen model through a server-side
+chat-completions API for optional source-scoped architectural questions,
+repository exploration, and issue investigation guidance. The API key is
+configured privately on the server and is never included in this repository.
+If the provider is unavailable, times out, or the model output cannot be
+supported, RepoWorld labels the fallback rather than pretending AI ran.
+The visual city, code/path discovery, and labeled public issue exploration
+remain useful independently of successful model inference.
+
+TECHNICAL NOTES AND LIMITATIONS
+The detailed disclosures below describe the read-only architecture, public
+source provenance, safeguards, rate limits, and Render Free behavior.
 
 RepoWorld is an anonymous, read-only explorer for PUBLIC GitHub repositories. No
 GitHub/Google login or account signup is required. A user pastes a public
